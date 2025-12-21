@@ -1,0 +1,204 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  password    String
+  name        String
+  phone       String?
+  inn         String?
+  ogrn        String?
+  isPremium   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project     Project?
+  employees   Employee[]
+  checklists  Checklist[]
+  events      CalendarEvent[]
+  services    Service[]
+  equipment   Equipment[]
+  transactions Transaction[]
+  documents   Document[]
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  grantAmount Int      @default(500000)
+  spentAmount Int      @default(0)
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Employee {
+  id              String   @id @default(cuid())
+  name            String
+  position        String
+  hireDate        DateTime
+  birthDate       DateTime?
+  status          EmployeeStatus @default(ACTIVE)
+  militaryStatus  MilitaryStatus @default(NOT_APPLICABLE)
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documents       EmployeeDocument[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+enum EmployeeStatus {
+  ACTIVE
+  DISMISSED
+}
+
+enum MilitaryStatus {
+  UPDATED
+  NEEDS_UPDATE
+  NOT_APPLICABLE
+}
+
+model EmployeeDocument {
+  id          String   @id @default(cuid())
+  type        DocumentType
+  status      DocumentStatus @default(IN_PROGRESS)
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+}
+
+enum DocumentType {
+  CONTRACT
+  ORDER
+  DISMISSAL_ORDER
+  INCOME_CERT
+  OTHER
+}
+
+enum DocumentStatus {
+  READY
+  IN_PROGRESS
+  PENDING
+}
+
+model Checklist {
+  id        String   @id @default(cuid())
+  title     String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks     Task[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Task {
+  id          String    @id @default(cuid())
+  text        String
+  completed   Boolean   @default(false)
+  deadline    DateTime?
+  checklistId String
+  checklist   Checklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+}
+
+model CalendarEvent {
+  id          String   @id @default(cuid())
+  title       String
+  date        DateTime
+  time        String
+  location    String
+  priority    EventPriority @default(NORMAL)
+  description String?
+  completed   Boolean  @default(false)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+}
+
+enum EventPriority {
+  NORMAL
+  IMPORTANT
+  URGENT
+}
+
+model Service {
+  id        String   @id @default(cuid())
+  name      String
+  amount    Int
+  category  ServiceCategory @default(THIRD_PARTY)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documents ServiceDocument[]
+  createdAt DateTime @default(now())
+}
+
+enum ServiceCategory {
+  THIRD_PARTY
+  OTHER
+}
+
+model ServiceDocument {
+  id        String   @id @default(cuid())
+  type      String
+  serviceId String
+  service   Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model Equipment {
+  id           String   @id @default(cuid())
+  name         String
+  amount       Int
+  purchaseDate DateTime
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documents    EquipmentDocument[]
+  createdAt    DateTime @default(now())
+}
+
+model EquipmentDocument {
+  id          String    @id @default(cuid())
+  type        String
+  equipmentId String
+  equipment   Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+}
+
+model Transaction {
+  id          String   @id @default(cuid())
+  description String
+  amount      Int
+  category    TransactionCategory
+  date        DateTime
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+}
+
+enum TransactionCategory {
+  SALARY
+  TAXES
+  EQUIPMENT
+  SERVICES
+  OTHER
+}
+
+model Document {
+  id          String   @id @default(cuid())
+  name        String
+  fileName    String
+  fileType    String
+  fileSize    Int
+  fileData    String   @db.Text
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+}
