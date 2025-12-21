@@ -15,10 +15,10 @@
     "@react-google-maps/api": "^2.19.3",
     "bcryptjs": "^3.0.3",
     "jsonwebtoken": "^9.0.3",
-    "next": "15.3.2",
+    "next": "^16.1.0",
     "prisma": "^5.22.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
     "recharts": "^3.0.2"
   },
   "devDependencies": {
