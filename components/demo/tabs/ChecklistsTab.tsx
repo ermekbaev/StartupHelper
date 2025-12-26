@@ -15,6 +15,7 @@ interface Task {
 interface Checklist {
   id: string;
   title: string;
+  category: 'HR' | 'FINANCE' | null;
   tasks: Task[];
 }
 
@@ -57,6 +58,7 @@ export function ChecklistsTab() {
     setIsSubmitting(true);
     const formData = new FormData(e.currentTarget);
     const title = formData.get('title') as string;
+    const category = formData.get('category') as string;
     const tasks: string[] = [];
 
     for (let i = 1; i <= 5; i++) {
@@ -78,7 +80,7 @@ export function ChecklistsTab() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ title, tasks }),
+        body: JSON.stringify({ title, tasks, category: category || null }),
       });
 
       if (response.ok) {
@@ -218,16 +220,25 @@ export function ChecklistsTab() {
             <p className="text-xs sm:text-sm">Создайте первый чек-лист</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 items-stretch">
             {checklists.map(checklist => {
               const completedTasks = checklist.tasks.filter(t => t.completed).length;
               const totalTasks = checklist.tasks.length;
               const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+              const categoryLabel = checklist.category === 'HR' ? 'Кадры' : checklist.category === 'FINANCE' ? 'Финансы' : null;
+              const categoryColor = checklist.category === 'HR' ? 'bg-purple-100 text-purple-700' : checklist.category === 'FINANCE' ? 'bg-green-100 text-green-700' : '';
 
               return (
-                <div key={checklist.id} className="border border-gray-200 rounded-lg p-4 sm:p-6">
+                <div key={checklist.id} className="border border-gray-200 rounded-lg p-4 sm:p-6 flex flex-col">
                   <div className="flex justify-between items-start mb-3 sm:mb-4 gap-2">
-                    <h3 className="text-base sm:text-lg font-semibold text-gray-900">{checklist.title}</h3>
+                    <div className="flex flex-col gap-1">
+                      <h3 className="text-base sm:text-lg font-semibold text-gray-900">{checklist.title}</h3>
+                      {categoryLabel && (
+                        <span className={`text-[10px] sm:text-xs px-2 py-0.5 rounded-full w-fit ${categoryColor}`}>
+                          {categoryLabel}
+                        </span>
+                      )}
+                    </div>
                     <button
                       onClick={() => handleDeleteChecklist(checklist.id)}
                       className="text-gray-400 hover:text-red-600 transition p-1"
@@ -236,7 +247,7 @@ export function ChecklistsTab() {
                     </button>
                   </div>
 
-                  <div className="space-y-2 sm:space-y-3">
+                  <div className="space-y-2 sm:space-y-3 flex-1">
                     {checklist.tasks.map(task => {
                       const isOverdue = task.deadline && !task.completed && new Date(task.deadline) < new Date();
                       const deadlineDate = task.deadline ? new Date(task.deadline) : null;
@@ -284,7 +295,7 @@ export function ChecklistsTab() {
                     </button>
                   </div>
 
-                  <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t">
+                  <div className="mt-auto pt-4 sm:pt-6 border-t border-gray-200">
                     <div className="flex justify-between text-xs sm:text-sm mb-2">
                       <span className="text-gray-600">Прогресс:</span>
                       <span className="text-blue-600 font-medium">{completedTasks}/{totalTasks} выполнено</span>
@@ -309,6 +320,18 @@ export function ChecklistsTab() {
           <div>
             <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Название чек-листа</label>
             <input name="title" type="text" required className="input w-full text-sm sm:text-base" placeholder="Например: Запуск проекта" />
+          </div>
+          <div>
+            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Категория</label>
+            <select name="category" className="input w-full text-sm sm:text-base">
+              <option value="">Без категории (общий)</option>
+              <option value="HR">Кадры</option>
+              <option value="FINANCE">Финансы</option>
+            </select>
+            <p className="text-[10px] sm:text-xs text-gray-500 mt-1">
+              <i className="ri-folder-line mr-1"></i>
+              Чек-листы с категорией отображаются в соответствующих разделах
+            </p>
           </div>
           <div>
             <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">Задачи</label>

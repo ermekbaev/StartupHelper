@@ -190,25 +190,30 @@ export function DashboardTab() {
         <Card>
           <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4">Расходы по категориям</h2>
           {pieData.length > 0 ? (
-            <div className="h-56 sm:h-64">
+            <div className="h-64 sm:h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={pieData}
                     cx="50%"
-                    cy="50%"
+                    cy="40%"
                     innerRadius={40}
                     outerRadius={70}
                     paddingAngle={2}
                     dataKey="value"
-                    label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
-                    labelLine={false}
                   >
                     {pieData.map((_, index) => (
                       <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                     ))}
                   </Pie>
                   <Tooltip formatter={(value) => `${(value ?? 0).toLocaleString()} ₽`} />
+                  <Legend
+                    layout="horizontal"
+                    verticalAlign="bottom"
+                    align="center"
+                    wrapperStyle={{ paddingTop: '16px' }}
+                    formatter={(value) => <span className="text-xs sm:text-sm text-gray-700">{value}</span>}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             </div>

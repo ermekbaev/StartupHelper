@@ -14,8 +14,21 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const { searchParams } = new URL(request.url);
+    const category = searchParams.get('category');
+
+    const whereClause: { userId: string; category?: 'HR' | 'FINANCE' | null } = {
+      userId: currentUser.id,
+    };
+
+    if (category === 'HR' || category === 'FINANCE') {
+      whereClause.category = category;
+    } else if (category === 'none') {
+      whereClause.category = null;
+    }
+
     const checklists = await prisma.checklist.findMany({
-      where: { userId: currentUser.id },
+      where: whereClause,
       include: {
         tasks: {
           orderBy: { createdAt: 'asc' },
@@ -47,7 +60,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { title, tasks } = body;
+    const { title, tasks, category } = body;
 
     if (!title) {
       return NextResponse.json(
@@ -59,6 +72,7 @@ export async function POST(request: NextRequest) {
     const checklist = await prisma.checklist.create({
       data: {
         title,
+        category: category === 'HR' || category === 'FINANCE' ? category : null,
         userId: currentUser.id,
         tasks: {
           create: (tasks || []).map((text: string) => ({

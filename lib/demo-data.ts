@@ -9,26 +9,96 @@ export const INITIAL_USER_PROFILE = {
 };
 
 export const INITIAL_CHECKLISTS = [
+  // Общие чек-листы (без категории)
   {
-    id: 1,
-    title: 'После открытия ООО',
+    title: 'После открытия ООО/ИП',
+    category: null,
     tasks: [
-      { id: 'task-1', text: 'Открыть расчётный счёт', completed: true },
-      { id: 'task-2', text: 'Заказать печать и штамп', completed: true },
-      { id: 'task-3', text: 'Создать корпоративный сайт', completed: false },
-      { id: 'task-4', text: 'Уведомить фонд об открытии ООО', completed: false },
-      { id: 'task-5', text: 'Настроить онлайн-кассу', completed: false },
+      { text: 'Открыть расчётный счёт в банке', completed: false },
+      { text: 'Заказать печать и штамп организации', completed: false },
+      { text: 'Уведомить фонд об открытии юр. лица', completed: false },
+      { text: 'Получить коды статистики (Росстат)', completed: false },
+      { text: 'Зарегистрироваться в ФСС и ПФР', completed: false },
     ],
   },
   {
-    id: 2,
-    title: 'При заключении договора',
+    title: 'Запуск проекта',
+    category: null,
     tasks: [
-      { id: 'contract-1', text: 'Подготовить договор', completed: false },
-      { id: 'contract-2', text: 'Получить подписи сторон', completed: false },
-      { id: 'contract-3', text: 'Составить акт выполненных работ', completed: false },
-      { id: 'contract-4', text: 'Выставить счёт', completed: false },
-      { id: 'contract-5', text: 'Сохранить документы в архив', completed: false },
+      { text: 'Составить детальный бизнес-план', completed: false },
+      { text: 'Определить ключевые метрики успеха', completed: false },
+      { text: 'Создать MVP продукта', completed: false },
+      { text: 'Провести первичное тестирование', completed: false },
+      { text: 'Подготовить презентацию для инвесторов', completed: false },
+    ],
+  },
+  // Кадровые чек-листы (HR)
+  {
+    title: 'Приём нового сотрудника',
+    category: 'HR' as const,
+    tasks: [
+      { text: 'Получить документы от кандидата', completed: false },
+      { text: 'Составить трудовой договор', completed: false },
+      { text: 'Издать приказ о приёме на работу', completed: false },
+      { text: 'Внести запись в трудовую книжку', completed: false },
+      { text: 'Оформить личную карточку Т-2', completed: false },
+      { text: 'Провести инструктаж по охране труда', completed: false },
+    ],
+  },
+  {
+    title: 'Увольнение сотрудника',
+    category: 'HR' as const,
+    tasks: [
+      { text: 'Получить заявление об увольнении', completed: false },
+      { text: 'Издать приказ об увольнении', completed: false },
+      { text: 'Внести запись в трудовую книжку', completed: false },
+      { text: 'Произвести окончательный расчёт', completed: false },
+      { text: 'Выдать справки (2-НДФЛ, 182н)', completed: false },
+    ],
+  },
+  {
+    title: 'Воинский учёт',
+    category: 'HR' as const,
+    tasks: [
+      { text: 'Назначить ответственного за воинский учёт', completed: false },
+      { text: 'Завести карточки учёта на сотрудников', completed: false },
+      { text: 'Уведомить военкомат о приёме/увольнении', completed: false },
+      { text: 'Провести сверку данных с военкоматом', completed: false },
+    ],
+  },
+  // Финансовые чек-листы (FINANCE)
+  {
+    title: 'Ежемесячная отчётность',
+    category: 'FINANCE' as const,
+    tasks: [
+      { text: 'Собрать первичные документы за месяц', completed: false },
+      { text: 'Сверить остатки по расчётному счёту', completed: false },
+      { text: 'Подготовить отчёт о расходах для фонда', completed: false },
+      { text: 'Рассчитать и уплатить налоги', completed: false },
+      { text: 'Выплатить заработную плату сотрудникам', completed: false },
+    ],
+  },
+  {
+    title: 'Квартальная отчётность',
+    category: 'FINANCE' as const,
+    tasks: [
+      { text: 'Подготовить декларацию по УСН/ОСНО', completed: false },
+      { text: 'Сдать отчёт в ФСС (4-ФСС)', completed: false },
+      { text: 'Сдать отчёт в ПФР (СЗВ-М, СЗВ-СТАЖ)', completed: false },
+      { text: 'Подготовить финансовый отчёт для гранта', completed: false },
+      { text: 'Провести инвентаризацию расходов', completed: false },
+    ],
+  },
+  {
+    title: 'При заключении договора',
+    category: 'FINANCE' as const,
+    tasks: [
+      { text: 'Проверить контрагента (выписка ЕГРЮЛ)', completed: false },
+      { text: 'Подготовить и согласовать договор', completed: false },
+      { text: 'Получить подписи сторон', completed: false },
+      { text: 'Выставить/получить счёт на оплату', completed: false },
+      { text: 'Составить акт выполненных работ', completed: false },
+      { text: 'Сохранить документы в архив', completed: false },
     ],
   },
 ];

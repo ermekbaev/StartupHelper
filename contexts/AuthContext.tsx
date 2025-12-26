@@ -25,13 +25,21 @@ interface Project {
   updatedAt: string;
 }
 
+interface RegisterData {
+  email: string;
+  password: string;
+  name: string;
+  projectName?: string;
+  grantAmount?: number;
+}
+
 interface AuthContextType {
   user: User | null;
   token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name: string) => Promise<void>;
+  register: (data: RegisterData) => Promise<void>;
   logout: () => void;
   updateUser: (userData: Partial<User>) => void;
   refreshUser: () => Promise<void>;
@@ -118,11 +126,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push('/dashboard');
   };
 
-  const register = async (email: string, password: string, name: string) => {
+  const register = async (registerData: RegisterData) => {
     const response = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, name }),
+      body: JSON.stringify(registerData),
     });
 
     const data = await response.json();

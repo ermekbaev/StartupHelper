@@ -9,6 +9,8 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [projectName, setProjectName] = useState('');
+  const [grantAmount, setGrantAmount] = useState('500000');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { register } = useAuth();
@@ -30,7 +32,13 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     try {
-      await register(email, password, name);
+      await register({
+        email,
+        password,
+        name,
+        projectName: projectName || undefined,
+        grantAmount: grantAmount ? parseInt(grantAmount) : undefined,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');
     } finally {
@@ -115,6 +123,41 @@ export default function RegisterPage() {
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
                 placeholder="Повторите пароль"
               />
+            </div>
+
+            <div className="border-t border-gray-200 pt-5">
+              <p className="text-sm text-gray-500 mb-4">Информация о проекте (опционально)</p>
+
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="projectName" className="block text-sm font-medium text-gray-700 mb-1">
+                    Название проекта
+                  </label>
+                  <input
+                    id="projectName"
+                    type="text"
+                    value={projectName}
+                    onChange={(e) => setProjectName(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                    placeholder="Мой стартап"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="grantAmount" className="block text-sm font-medium text-gray-700 mb-1">
+                    Сумма гранта (₽)
+                  </label>
+                  <input
+                    id="grantAmount"
+                    type="number"
+                    value={grantAmount}
+                    onChange={(e) => setGrantAmount(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                    placeholder="500000"
+                    min="0"
+                  />
+                </div>
+              </div>
             </div>
 
             <button

@@ -19,14 +19,15 @@ model User {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  project     Project?
-  employees   Employee[]
-  checklists  Checklist[]
-  events      CalendarEvent[]
-  services    Service[]
-  equipment   Equipment[]
-  transactions Transaction[]
-  documents   Document[]
+  project         Project?
+  employees       Employee[]
+  checklists      Checklist[]
+  events          CalendarEvent[]
+  services        Service[]
+  equipment       Equipment[]
+  transactions    Transaction[]
+  documents       Document[]
+  supportMessages SupportMessage[]
 }
 
 model Project {
@@ -89,9 +90,15 @@ enum DocumentStatus {
   PENDING
 }
 
+enum ChecklistCategory {
+  HR
+  FINANCE
+}
+
 model Checklist {
   id        String   @id @default(cuid())
   title     String
+  category  ChecklistCategory?
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   tasks     Task[]
@@ -201,4 +208,18 @@ model Document {
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
+}
+
+model SupportMessage {
+  id        String        @id @default(cuid())
+  text      String        @db.Text
+  sender    MessageSender
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime      @default(now())
+}
+
+enum MessageSender {
+  USER
+  SUPPORT
 }

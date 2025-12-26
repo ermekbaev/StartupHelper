@@ -3,7 +3,6 @@
 import { useState, useCallback } from 'react';
 import {
   INITIAL_USER_PROFILE,
-  INITIAL_CHECKLISTS,
   INITIAL_SERVICES,
   INITIAL_EQUIPMENT,
   INITIAL_EMPLOYEES,
@@ -71,7 +70,7 @@ export interface Employee {
 
 export function useDemoStore() {
   const [userProfile, setUserProfile] = useState<UserProfile>(INITIAL_USER_PROFILE);
-  const [checklists, setChecklists] = useState<Checklist[]>(INITIAL_CHECKLISTS);
+  const [checklists, setChecklists] = useState<Checklist[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<Record<string, CalendarEvent[]>>({});
   const [services, setServices] = useState<Service[]>(INITIAL_SERVICES);
   const [equipment, setEquipment] = useState<Equipment[]>(INITIAL_EQUIPMENT);

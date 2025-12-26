@@ -105,15 +105,32 @@ export async function GET(request: NextRequest) {
 
     // Расчет дней до ближайшего отчета (условно - конец квартала)
     const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
+    let currentYear = now.getFullYear();
     let reportMonth: number;
 
+    // Определяем ближайший квартальный отчёт
     if (currentMonth < 3) reportMonth = 2; // Март
     else if (currentMonth < 6) reportMonth = 5; // Июнь
     else if (currentMonth < 9) reportMonth = 8; // Сентябрь
     else reportMonth = 11; // Декабрь
 
-    const reportDate = new Date(currentYear, reportMonth + 1, 0); // Последний день месяца
+    let reportDate = new Date(currentYear, reportMonth + 1, 0); // Последний день месяца
+
+    // Если проект создан менее 30 дней назад — показываем следующий квартал
+    if (project?.createdAt) {
+      const projectAge = Math.ceil((now.getTime() - new Date(project.createdAt).getTime()) / (1000 * 60 * 60 * 24));
+
+      if (projectAge < 30) {
+        // Переносим на следующий квартал
+        reportMonth += 3;
+        if (reportMonth > 11) {
+          reportMonth -= 12;
+          currentYear += 1;
+        }
+        reportDate = new Date(currentYear, reportMonth + 1, 0);
+      }
+    }
+
     const daysUntilReport = Math.ceil((reportDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
     return NextResponse.json({

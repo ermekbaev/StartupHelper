@@ -1,29 +1,30 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { AppHeader, Sidebar, TabType } from '@/components/layout';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { AppHeader, Sidebar, TabType } from "@/components/layout";
 import {
   DashboardTab,
   CalendarTab,
   ChecklistsTab,
   DocumentsTab,
-  ArchiveTab,
   HRTab,
   FinanceTab,
+  AnalyticsTab,
   SupportTab,
-} from '@/components/demo/tabs';
-import { ProfileModal } from '@/components/demo/modals';
-import { ProjectOnboarding } from '@/components/demo/ProjectOnboarding';
-import { useDemoStore } from '@/hooks/useDemoStore';
-import { useAuth } from '@/contexts/AuthContext';
+} from "@/components/demo/tabs";
+import { ProfileModal } from "@/components/demo/modals";
+import { ProjectOnboarding } from "@/components/demo/ProjectOnboarding";
+import { useDemoStore } from "@/hooks/useDemoStore";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function DashboardPage() {
-  const [activeTab, setActiveTab] = useState<TabType>('dashboard');
+  const [activeTab, setActiveTab] = useState<TabType>("dashboard");
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const router = useRouter();
-  const { user, token, isLoading, isAuthenticated, refreshUser, logout } = useAuth();
+  const { user, token, isLoading, isAuthenticated, refreshUser, logout } =
+    useAuth();
 
   const store = useDemoStore();
 
@@ -33,10 +34,10 @@ export default function DashboardPage() {
       store.updateProfile({
         name: user.name,
         email: user.email,
-        phone: user.phone || '',
-        inn: user.inn || '',
-        ogrn: user.ogrn || '',
-        projectName: user.project?.name || '',
+        phone: user.phone || "",
+        inn: user.inn || "",
+        ogrn: user.ogrn || "",
+        projectName: user.project?.name || "",
         grantAmount: user.project?.grantAmount || 500000,
       });
     }
@@ -45,15 +46,15 @@ export default function DashboardPage() {
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      router.push('/login');
+      router.push("/login");
     }
   }, [isLoading, isAuthenticated, router]);
 
   const handleCreateProject = async (name: string, grantAmount: number) => {
-    const response = await fetch('/api/projects', {
-      method: 'POST',
+    const response = await fetch("/api/projects", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({ name, grantAmount }),
@@ -61,7 +62,7 @@ export default function DashboardPage() {
 
     if (!response.ok) {
       const data = await response.json();
-      throw new Error(data.error || 'Failed to create project');
+      throw new Error(data.error || "Failed to create project");
     }
 
     await refreshUser();
@@ -86,42 +87,28 @@ export default function DashboardPage() {
 
   const renderTab = () => {
     switch (activeTab) {
-      case 'dashboard':
+      case "dashboard":
         return <DashboardTab />;
 
-      case 'calendar':
+      case "calendar":
         return <CalendarTab />;
 
-      case 'checklists':
+      case "checklists":
         return <ChecklistsTab />;
 
-      case 'documents':
+      case "documents":
         return <DocumentsTab />;
 
-      case 'archive':
-        return (
-          <ArchiveTab
-            grantAmount={store.userProfile.grantAmount}
-            services={store.services}
-            equipment={store.equipment}
-            onAddService={store.addService}
-            onDeleteService={store.deleteService}
-            onAddServiceDocument={store.addServiceDocument}
-            onDeleteServiceDocument={store.deleteServiceDocument}
-            onAddEquipment={store.addEquipment}
-            onDeleteEquipment={store.deleteEquipment}
-            onAddEquipmentDocument={store.addEquipmentDocument}
-            onDeleteEquipmentDocument={store.deleteEquipmentDocument}
-          />
-        );
-
-      case 'hr':
+      case "hr":
         return <HRTab />;
 
-      case 'finance':
+      case "finance":
         return <FinanceTab />;
 
-      case 'support':
+      case "analytics":
+        return <AnalyticsTab />;
+
+      case "support":
         return <SupportTab />;
 
       default:
@@ -139,30 +126,24 @@ export default function DashboardPage() {
         isMobileMenuOpen={isMobileMenuOpen}
       />
 
+      {/* Sidebar - fixed on desktop */}
+      <div className="hidden lg:block fixed top-[112px] left-4 xl:left-[calc((100vw-1280px)/2+16px)] w-64 xl:w-72">
+        <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
+      </div>
+
+      {/* Mobile Sidebar */}
+      <div className="lg:hidden">
+        <Sidebar
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          isOpen={isMobileMenuOpen}
+          onClose={() => setIsMobileMenuOpen(false)}
+        />
+      </div>
+
+      {/* Main content */}
       <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 lg:py-8">
-        <div className="flex gap-4 lg:gap-8">
-          {/* Sidebar - hidden on mobile, shown on lg+ */}
-          <div className="hidden lg:block lg:w-64 xl:w-72 flex-shrink-0">
-            <div className="sticky top-20">
-              <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
-            </div>
-          </div>
-
-          {/* Mobile Sidebar */}
-          <div className="lg:hidden">
-            <Sidebar
-              activeTab={activeTab}
-              onTabChange={setActiveTab}
-              isOpen={isMobileMenuOpen}
-              onClose={() => setIsMobileMenuOpen(false)}
-            />
-          </div>
-
-          {/* Main content */}
-          <div className="flex-1 min-w-0">
-            {renderTab()}
-          </div>
-        </div>
+        <div className="lg:ml-72 xl:ml-80">{renderTab()}</div>
       </div>
 
       <ProfileModal
@@ -172,10 +153,10 @@ export default function DashboardPage() {
         onSave={store.updateProfile}
         isPremium={user?.isPremium}
         onTogglePremium={async (value: boolean) => {
-          const response = await fetch('/api/users/profile', {
-            method: 'PUT',
+          const response = await fetch("/api/users/profile", {
+            method: "PUT",
             headers: {
-              'Content-Type': 'application/json',
+              "Content-Type": "application/json",
               Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({ isPremium: value }),

@@ -5,6 +5,8 @@ import { Card, ProgressBar, AdBanner } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { useAuth } from '@/contexts/AuthContext';
 
+type FinanceSubTab = 'salary' | 'taxes' | 'services' | 'equipment' | 'other';
+
 interface Transaction {
   id: string;
   description: string;
@@ -14,10 +16,13 @@ interface Transaction {
   createdAt: string;
 }
 
-interface CategoryTotal {
-  category: string;
-  _sum: { amount: number | null };
-}
+const subTabs: { id: FinanceSubTab; label: string; category: Transaction['category']; icon: string; color: string }[] = [
+  { id: 'salary', label: 'Заработная плата', category: 'SALARY', icon: 'ri-user-line', color: 'blue' },
+  { id: 'taxes', label: 'Налоги', category: 'TAXES', icon: 'ri-government-line', color: 'red' },
+  { id: 'services', label: 'Услуги сторонних лиц', category: 'SERVICES', icon: 'ri-file-text-line', color: 'purple' },
+  { id: 'equipment', label: 'Оборудование', category: 'EQUIPMENT', icon: 'ri-computer-line', color: 'green' },
+  { id: 'other', label: 'Прочие расходы', category: 'OTHER', icon: 'ri-more-line', color: 'orange' },
+];
 
 const CATEGORY_LABELS: Record<string, string> = {
   SALARY: 'Заработная плата',
@@ -27,26 +32,18 @@ const CATEGORY_LABELS: Record<string, string> = {
   OTHER: 'Прочие расходы',
 };
 
-const CATEGORY_COLORS: Record<string, 'blue' | 'green' | 'purple' | 'orange' | 'red'> = {
-  SALARY: 'blue',
-  TAXES: 'red',
-  EQUIPMENT: 'green',
-  SERVICES: 'purple',
-  OTHER: 'orange',
-};
-
-const CATEGORY_ICONS: Record<string, { icon: string; bg: string; color: string }> = {
-  SALARY: { icon: 'ri-user-line', bg: 'bg-blue-100', color: 'text-blue-600' },
-  TAXES: { icon: 'ri-government-line', bg: 'bg-red-100', color: 'text-red-600' },
-  EQUIPMENT: { icon: 'ri-computer-line', bg: 'bg-green-100', color: 'text-green-600' },
-  SERVICES: { icon: 'ri-file-text-line', bg: 'bg-purple-100', color: 'text-purple-600' },
-  OTHER: { icon: 'ri-more-line', bg: 'bg-orange-100', color: 'text-orange-600' },
+const CATEGORY_DESCRIPTIONS: Record<string, string> = {
+  SALARY: 'Выплаты сотрудникам, премии, отпускные',
+  TAXES: 'НДФЛ, страховые взносы, налог по УСН',
+  EQUIPMENT: 'Компьютеры, оргтехника, мебель',
+  SERVICES: 'Бухгалтерия, юридические услуги, консалтинг',
+  OTHER: 'Командировки, канцелярия, прочее',
 };
 
 export function FinanceTab() {
   const { user, token, refreshUser } = useAuth();
+  const [activeSubTab, setActiveSubTab] = useState<FinanceSubTab>('salary');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [totals, setTotals] = useState<CategoryTotal[]>([]);
   const [totalSpent, setTotalSpent] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -56,13 +53,26 @@ export function FinanceTab() {
   const [formData, setFormData] = useState({
     description: '',
     amount: '',
-    category: 'OTHER' as Transaction['category'],
     date: new Date().toISOString().split('T')[0],
   });
 
   const grantAmount = user?.project?.grantAmount || 500000;
   const remainingGrant = grantAmount - totalSpent;
-  const spentPercentage = (totalSpent / grantAmount) * 100;
+
+  // Get current category from active subtab
+  const currentTab = subTabs.find((t) => t.id === activeSubTab)!;
+  const currentCategory = currentTab.category;
+
+  // Filter transactions by current category
+  const categoryTransactions = transactions.filter((tx) => tx.category === currentCategory);
+  const categoryTotal = categoryTransactions.reduce((sum, tx) => sum + tx.amount, 0);
+
+  // Calculate percentage of grant for this category
+  const categoryPercentage = (categoryTotal / grantAmount) * 100;
+
+  // Limits for services (25% max according to grant rules)
+  const servicesLimit = currentCategory === 'SERVICES' ? 25 : null;
+  const isOverLimit = servicesLimit && categoryPercentage > servicesLimit;
 
   const fetchTransactions = async () => {
     if (!token) return;
@@ -75,7 +85,6 @@ export function FinanceTab() {
       if (response.ok) {
         const data = await response.json();
         setTransactions(data.transactions);
-        setTotals(data.totals);
         setTotalSpent(data.totalSpent);
       }
     } catch (error) {
@@ -104,7 +113,7 @@ export function FinanceTab() {
         body: JSON.stringify({
           description: formData.description,
           amount: parseInt(formData.amount),
-          category: formData.category,
+          category: currentCategory,
           date: formData.date,
         }),
       });
@@ -113,7 +122,6 @@ export function FinanceTab() {
         setFormData({
           description: '',
           amount: '',
-          category: 'OTHER',
           date: new Date().toISOString().split('T')[0],
         });
         setShowAddModal(false);
@@ -128,7 +136,7 @@ export function FinanceTab() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!token || !confirm('Удалить эту транзакцию?')) return;
+    if (!token || !confirm('Удалить эту операцию?')) return;
 
     try {
       const response = await fetch(`/api/finance?id=${id}`, {
@@ -148,17 +156,10 @@ export function FinanceTab() {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('ru-RU', {
       day: '2-digit',
-      month: '2-digit',
+      month: 'short',
       year: 'numeric',
     });
   };
-
-  // Calculate category percentages
-  const categoryExpenses = totals.map((t) => ({
-    category: t.category,
-    amount: t._sum.amount || 0,
-    percentage: totalSpent > 0 ? ((t._sum.amount || 0) / totalSpent) * 100 : 0,
-  }));
 
   if (isLoading) {
     return (
@@ -170,114 +171,157 @@ export function FinanceTab() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Финансы</h1>
+        <p className="text-sm text-gray-600">Учёт расходов по категориям грантовых средств</p>
+      </div>
+
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6">
-        <Card className="p-4 sm:p-6">
-          <div className="text-center sm:text-left flex sm:flex-col items-center justify-between sm:justify-start">
-            <p className="text-xs sm:text-sm text-gray-600 sm:mb-1">Сумма гранта</p>
-            <p className="text-xl sm:text-3xl font-bold text-gray-900">{grantAmount.toLocaleString()} ₽</p>
-          </div>
+      <div className="grid grid-cols-3 gap-3 sm:gap-4">
+        <Card className="p-3 sm:p-4">
+          <p className="text-xs sm:text-sm text-gray-600">Сумма гранта</p>
+          <p className="text-lg sm:text-xl font-bold text-gray-900">{grantAmount.toLocaleString()} ₽</p>
         </Card>
-        <Card className="p-4 sm:p-6">
-          <div className="text-center sm:text-left flex sm:flex-col items-center justify-between sm:justify-start">
-            <p className="text-xs sm:text-sm text-gray-600 sm:mb-1">Потрачено</p>
-            <p className="text-xl sm:text-3xl font-bold text-red-600">{totalSpent.toLocaleString()} ₽</p>
-          </div>
+        <Card className="p-3 sm:p-4">
+          <p className="text-xs sm:text-sm text-gray-600">Потрачено</p>
+          <p className="text-lg sm:text-xl font-bold text-red-600">{totalSpent.toLocaleString()} ₽</p>
         </Card>
-        <Card className="p-4 sm:p-6">
-          <div className="text-center sm:text-left flex sm:flex-col items-center justify-between sm:justify-start">
-            <p className="text-xs sm:text-sm text-gray-600 sm:mb-1">Остаток</p>
-            <p className="text-xl sm:text-3xl font-bold text-green-600">{remainingGrant.toLocaleString()} ₽</p>
-          </div>
+        <Card className="p-3 sm:p-4">
+          <p className="text-xs sm:text-sm text-gray-600">Остаток</p>
+          <p className="text-lg sm:text-xl font-bold text-green-600">{remainingGrant.toLocaleString()} ₽</p>
         </Card>
       </div>
 
-      {/* Spending Progress */}
+      {/* Category Tabs */}
       <Card>
-        <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Использование гранта</h2>
-        <div className="mb-4">
-          <div className="flex justify-between text-xs sm:text-sm mb-2">
-            <span className="text-gray-600">Потрачено</span>
-            <span className="font-medium">{spentPercentage.toFixed(1)}%</span>
-          </div>
-          <ProgressBar value={spentPercentage} color="blue" />
+        <div className="flex flex-wrap gap-2 mb-6">
+          {subTabs.map((tab) => {
+            const tabTransactions = transactions.filter((tx) => tx.category === tab.category);
+            const tabTotal = tabTransactions.reduce((sum, tx) => sum + tx.amount, 0);
+
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveSubTab(tab.id)}
+                className={`flex items-center space-x-2 px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition ${
+                  activeSubTab === tab.id
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <i className={tab.icon}></i>
+                <span className="hidden sm:inline">{tab.label}</span>
+                <span className="sm:hidden">{tab.label.split(' ')[0]}</span>
+                {tabTotal > 0 && (
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                    activeSubTab === tab.id ? 'bg-white/20' : 'bg-gray-200'
+                  }`}>
+                    {tabTransactions.length}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
-      </Card>
 
-      {/* Expenses by Category */}
-      {categoryExpenses.length > 0 && (
-        <Card>
-          <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Расходы по категориям</h2>
-          <div className="space-y-3 sm:space-y-4">
-            {categoryExpenses.map((expense) => (
-              <div key={expense.category}>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm sm:text-base text-gray-700">{CATEGORY_LABELS[expense.category]}</span>
-                  <span className="text-sm sm:text-base font-medium">{expense.amount.toLocaleString()} ₽</span>
-                </div>
-                <ProgressBar
-                  value={expense.percentage}
-                  color={CATEGORY_COLORS[expense.category]}
-                />
+        {/* Category Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <div>
+            <div className="flex items-center space-x-2">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center bg-${currentTab.color}-100`}>
+                <i className={`${currentTab.icon} text-${currentTab.color}-600`}></i>
               </div>
-            ))}
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">{currentTab.label}</h2>
+                <p className="text-sm text-gray-500">{CATEGORY_DESCRIPTIONS[currentCategory]}</p>
+              </div>
+            </div>
           </div>
-        </Card>
-      )}
-
-      {/* Transactions List */}
-      <Card>
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
-          <h2 className="text-base sm:text-lg font-semibold text-gray-900">Операции</h2>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="btn btn-primary text-sm sm:text-base"
-          >
-            <i className="ri-add-line mr-1 sm:mr-2"></i>
+          <button onClick={() => setShowAddModal(true)} className="btn btn-primary">
+            <i className="ri-add-line mr-1"></i>
             Добавить расход
           </button>
         </div>
 
-        {transactions.length === 0 ? (
-          <div className="text-center py-6 sm:py-8 text-gray-500">
-            <i className="ri-wallet-line text-3xl sm:text-4xl mb-2"></i>
-            <p className="text-sm sm:text-base">Нет операций</p>
-            <p className="text-xs sm:text-sm">Добавьте первый расход</p>
+        {/* Category Stats */}
+        <div className="bg-gray-50 rounded-lg p-4 mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <div>
+              <p className="text-sm text-gray-600">Потрачено на {currentTab.label.toLowerCase()}</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900">{categoryTotal.toLocaleString()} ₽</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Операций</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900">{categoryTransactions.length}</p>
+            </div>
+            <div className="col-span-2 sm:col-span-1">
+              <p className="text-sm text-gray-600">
+                {servicesLimit ? `Лимит (${servicesLimit}% от гранта)` : 'От суммы гранта'}
+              </p>
+              <p className={`text-xl sm:text-2xl font-bold ${isOverLimit ? 'text-red-600' : 'text-gray-900'}`}>
+                {categoryPercentage.toFixed(1)}%
+              </p>
+            </div>
+          </div>
+
+          {servicesLimit && (
+            <div className="mt-4">
+              <div className="flex justify-between text-sm mb-2">
+                <span className="text-gray-600">Использовано от лимита</span>
+                <span className={isOverLimit ? 'text-red-600 font-medium' : 'text-green-600 font-medium'}>
+                  {categoryPercentage.toFixed(1)}% / {servicesLimit}%
+                </span>
+              </div>
+              <ProgressBar
+                value={categoryPercentage}
+                max={servicesLimit}
+                color={isOverLimit ? 'red' : categoryPercentage > servicesLimit * 0.8 ? 'orange' : 'green'}
+              />
+              {isOverLimit && (
+                <p className="text-xs text-red-600 mt-2 flex items-center">
+                  <i className="ri-alert-line mr-1"></i>
+                  Превышен лимит расходов на услуги сторонних лиц!
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Transactions List */}
+        {categoryTransactions.length === 0 ? (
+          <div className="text-center py-12 text-gray-500">
+            <i className={`${currentTab.icon} text-4xl mb-3`}></i>
+            <p className="font-medium">Нет операций в категории "{currentTab.label}"</p>
+            <p className="text-sm mt-1">Нажмите "Добавить расход" чтобы добавить первую операцию</p>
           </div>
         ) : (
-          <div className="space-y-2 sm:space-y-3">
-            {transactions.map((tx) => {
-              const iconInfo = CATEGORY_ICONS[tx.category];
-              return (
-                <div
-                  key={tx.id}
-                  className="flex items-start sm:items-center justify-between p-3 bg-gray-50 rounded-lg group gap-2"
-                >
-                  <div className="flex items-start sm:items-center space-x-2 sm:space-x-3 min-w-0 flex-1">
-                    <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center flex-shrink-0 ${iconInfo.bg}`}>
-                      <i className={`${iconInfo.icon} ${iconInfo.color} text-sm sm:text-base`}></i>
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium text-gray-900 text-sm sm:text-base truncate">{tx.description}</p>
-                      <p className="text-xs sm:text-sm text-gray-600 truncate">
-                        {formatDate(tx.date)} • {CATEGORY_LABELS[tx.category]}
-                      </p>
-                    </div>
+          <div className="space-y-3">
+            {categoryTransactions.map((tx) => (
+              <div
+                key={tx.id}
+                className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition group"
+              >
+                <div className="flex items-center space-x-3 min-w-0 flex-1">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center bg-${currentTab.color}-100 flex-shrink-0`}>
+                    <i className={`${currentTab.icon} text-${currentTab.color}-600`}></i>
                   </div>
-                  <div className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
-                    <span className="font-semibold text-red-600 text-sm sm:text-base whitespace-nowrap">
-                      -{tx.amount.toLocaleString()} ₽
-                    </span>
-                    <button
-                      onClick={() => handleDelete(tx.id)}
-                      className="sm:opacity-0 sm:group-hover:opacity-100 text-gray-400 hover:text-red-600 transition p-1"
-                    >
-                      <i className="ri-delete-bin-line"></i>
-                    </button>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-gray-900 truncate">{tx.description}</p>
+                    <p className="text-sm text-gray-500">{formatDate(tx.date)}</p>
                   </div>
                 </div>
-              );
-            })}
+                <div className="flex items-center space-x-3 flex-shrink-0">
+                  <span className="font-bold text-lg text-gray-900">{tx.amount.toLocaleString()} ₽</span>
+                  <button
+                    onClick={() => handleDelete(tx.id)}
+                    className="sm:opacity-0 sm:group-hover:opacity-100 text-gray-400 hover:text-red-600 transition p-2"
+                  >
+                    <i className="ri-delete-bin-line"></i>
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </Card>
@@ -286,16 +330,20 @@ export function FinanceTab() {
       {!user?.isPremium && <AdBanner variant="finance" />}
 
       {/* Add Transaction Modal */}
-      <Modal
-        isOpen={showAddModal}
-        onClose={() => setShowAddModal(false)}
-        title="Добавить расход"
-      >
+      <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title={`Добавить расход: ${currentTab.label}`}>
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg mb-4">
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center bg-${currentTab.color}-100`}>
+              <i className={`${currentTab.icon} text-${currentTab.color}-600`}></i>
+            </div>
+            <div>
+              <p className="font-medium text-gray-900">{currentTab.label}</p>
+              <p className="text-sm text-gray-500">{CATEGORY_DESCRIPTIONS[currentCategory]}</p>
+            </div>
+          </div>
+
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Описание
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Описание</label>
             <input
               type="text"
               className="input w-full"
@@ -307,9 +355,7 @@ export function FinanceTab() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Сумма (₽)
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Сумма (₽)</label>
             <input
               type="number"
               className="input w-full"
@@ -322,26 +368,7 @@ export function FinanceTab() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Категория
-            </label>
-            <select
-              className="input w-full"
-              value={formData.category}
-              onChange={(e) => setFormData({ ...formData, category: e.target.value as Transaction['category'] })}
-            >
-              <option value="SALARY">Заработная плата</option>
-              <option value="TAXES">Налоги</option>
-              <option value="EQUIPMENT">Оборудование</option>
-              <option value="SERVICES">Услуги сторонних лиц</option>
-              <option value="OTHER">Прочие расходы</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Дата
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Дата</label>
             <input
               type="date"
               className="input w-full"
@@ -352,18 +379,10 @@ export function FinanceTab() {
           </div>
 
           <div className="flex gap-3 pt-4">
-            <button
-              type="button"
-              onClick={() => setShowAddModal(false)}
-              className="btn btn-secondary flex-1"
-            >
+            <button type="button" onClick={() => setShowAddModal(false)} className="btn btn-secondary flex-1">
               Отмена
             </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="btn btn-primary flex-1"
-            >
+            <button type="submit" disabled={isSubmitting} className="btn btn-primary flex-1">
               {isSubmitting ? 'Сохранение...' : 'Добавить'}
             </button>
           </div>

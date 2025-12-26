@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import Link from 'next/link';
 
-export type TabType = 'dashboard' | 'calendar' | 'checklists' | 'documents' | 'archive' | 'hr' | 'finance' | 'support';
+export type TabType = 'dashboard' | 'calendar' | 'checklists' | 'documents' | 'hr' | 'finance' | 'analytics' | 'support';
 
 interface SidebarProps {
   activeTab: TabType;
@@ -17,9 +17,9 @@ const navItems: { id: TabType; label: string; icon: string }[] = [
   { id: 'calendar', label: 'Календарь', icon: 'ri-calendar-line' },
   { id: 'checklists', label: 'Чек-листы', icon: 'ri-checkbox-line' },
   { id: 'documents', label: 'Документы', icon: 'ri-file-text-line' },
-  { id: 'archive', label: 'Архив документов', icon: 'ri-archive-line' },
   { id: 'hr', label: 'Кадры', icon: 'ri-team-line' },
-  { id: 'finance', label: 'Финансы', icon: 'ri-pie-chart-line' },
+  { id: 'finance', label: 'Финансы', icon: 'ri-wallet-3-line' },
+  { id: 'analytics', label: 'Аналитика', icon: 'ri-pie-chart-line' },
   { id: 'support', label: 'Поддержка', icon: 'ri-customer-service-line' },
 ];
 
@@ -66,13 +66,13 @@ export function Sidebar({ activeTab, onTabChange, isOpen = false, onClose }: Sid
       <div
         className={`
           fixed lg:relative inset-y-0 left-0 z-50 lg:z-auto
-          w-72 lg:w-auto
+          w-72 lg:w-full
           transform transition-transform duration-300 ease-in-out
           ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
           lg:transform-none
         `}
       >
-        <div className="bg-white rounded-none lg:rounded-lg shadow-lg lg:shadow-sm h-full lg:h-auto p-4 sm:p-6 overflow-y-auto">
+        <div className="bg-white rounded-none lg:rounded-xl shadow-lg lg:shadow-sm h-full lg:h-auto p-4 sm:p-6">
           {/* Mobile header */}
           <div className="flex items-center justify-between mb-6 lg:hidden">
             <span className="text-lg font-bold text-blue-600" style={{fontFamily: '"Dancing Script", cursive'}}>
