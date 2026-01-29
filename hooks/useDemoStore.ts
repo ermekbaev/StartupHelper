@@ -8,6 +8,12 @@ import {
   INITIAL_EMPLOYEES,
 } from '@/lib/demo-data';
 
+export interface ReportDate {
+  id?: string;
+  title: string;
+  date: string;
+}
+
 export interface UserProfile {
   name: string;
   projectName: string;
@@ -16,6 +22,7 @@ export interface UserProfile {
   phone: string;
   inn: string;
   ogrn: string;
+  reportDates?: ReportDate[];
 }
 
 export interface ChecklistTask {

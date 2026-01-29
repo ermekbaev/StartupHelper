@@ -3,9 +3,11 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { Modal } from '@/components/ui/Modal';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function Home() {
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+  const { isAuthenticated, isLoading } = useAuth();
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
@@ -21,12 +23,20 @@ export default function Home() {
                 <i className="ri-vip-crown-line mr-1 text-amber-500"></i>
                 Тарифы
               </Link>
-              <Link href="/login" className="btn btn-primary text-xs sm:text-sm px-3 sm:px-4 py-2">
-                Войти
-              </Link>
-              <Link href="/register" className="btn btn-secondary text-xs sm:text-sm px-3 sm:px-4 py-2 hidden xs:inline-flex">
-                Регистрация
-              </Link>
+              {!isLoading && isAuthenticated ? (
+                <Link href="/dashboard" className="btn btn-primary text-xs sm:text-sm px-3 sm:px-4 py-2">
+                  Личный кабинет
+                </Link>
+              ) : (
+                <>
+                  <Link href="/login" className="btn btn-primary text-xs sm:text-sm px-3 sm:px-4 py-2">
+                    Войти
+                  </Link>
+                  <Link href="/register" className="btn btn-secondary text-xs sm:text-sm px-3 sm:px-4 py-2 hidden xs:inline-flex">
+                    Регистрация
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -46,12 +56,20 @@ export default function Home() {
               Упростите ведение бизнеса после получения гранта. Автоматические напоминания, чек-листы и инструкции для успешного развития вашего стартапа.
             </p>
             <div className="flex flex-col xs:flex-row gap-3 sm:gap-4">
-              <Link href="/register" className="bg-white text-blue-600 px-6 sm:px-8 py-2.5 sm:py-3 rounded-lg font-semibold hover:bg-blue-50 transition text-center text-sm sm:text-base">
-                Начать бесплатно
-              </Link>
-              <Link href="/login" className="border-2 border-white text-white px-6 sm:px-8 py-2.5 sm:py-3 rounded-lg font-semibold hover:bg-white hover:text-blue-600 transition text-center text-sm sm:text-base">
-                Войти в систему
-              </Link>
+              {!isLoading && isAuthenticated ? (
+                <Link href="/dashboard" className="bg-white text-blue-600 px-6 sm:px-8 py-2.5 sm:py-3 rounded-lg font-semibold hover:bg-blue-50 transition text-center text-sm sm:text-base">
+                  Перейти в личный кабинет
+                </Link>
+              ) : (
+                <>
+                  <Link href="/register" className="bg-white text-blue-600 px-6 sm:px-8 py-2.5 sm:py-3 rounded-lg font-semibold hover:bg-blue-50 transition text-center text-sm sm:text-base">
+                    Начать бесплатно
+                  </Link>
+                  <Link href="/login" className="border-2 border-white text-white px-6 sm:px-8 py-2.5 sm:py-3 rounded-lg font-semibold hover:bg-white hover:text-blue-600 transition text-center text-sm sm:text-base">
+                    Войти в систему
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -161,16 +179,31 @@ export default function Home() {
       {/* CTA Section */}
       <section className="py-10 sm:py-12 lg:py-16 px-4">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4 sm:mb-6">Готовы начать?</h2>
-          <p className="text-base sm:text-lg lg:text-xl text-gray-600 mb-6 sm:mb-8">Присоединяйтесь к сотням студентов, которые уже успешно ведут свой бизнес с нашей помощью</p>
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4 sm:mb-6">
+            {!isLoading && isAuthenticated ? 'Продолжите работу' : 'Готовы начать?'}
+          </h2>
+          <p className="text-base sm:text-lg lg:text-xl text-gray-600 mb-6 sm:mb-8">
+            {!isLoading && isAuthenticated
+              ? 'Вернитесь в личный кабинет для управления вашим проектом'
+              : 'Присоединяйтесь к сотням студентов, которые уже успешно ведут свой бизнес с нашей помощью'
+            }
+          </p>
 
           <div className="flex flex-col xs:flex-row gap-3 sm:gap-4 justify-center">
-            <Link href="/register" className="btn btn-primary px-6 sm:px-8 py-2.5 sm:py-3 text-sm sm:text-base">
-              Создать аккаунт бесплатно
-            </Link>
-            <Link href="/contact" className="btn btn-secondary px-6 sm:px-8 py-2.5 sm:py-3 text-sm sm:text-base">
-              Связаться с нами
-            </Link>
+            {!isLoading && isAuthenticated ? (
+              <Link href="/dashboard" className="btn btn-primary px-6 sm:px-8 py-2.5 sm:py-3 text-sm sm:text-base">
+                Перейти в личный кабинет
+              </Link>
+            ) : (
+              <>
+                <Link href="/register" className="btn btn-primary px-6 sm:px-8 py-2.5 sm:py-3 text-sm sm:text-base">
+                  Создать аккаунт бесплатно
+                </Link>
+                <Link href="/contact" className="btn btn-secondary px-6 sm:px-8 py-2.5 sm:py-3 text-sm sm:text-base">
+                  Связаться с нами
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </section>
@@ -252,8 +285,8 @@ export default function Home() {
             <ModalFeatureCard icon="ri-file-text-line" iconBg="bg-purple-600" bgColor="bg-purple-50" title="Шаблоны" description="Готовые документы для вашего бизнеса" />
           </div>
 
-          <Link href="/register" className="btn btn-primary px-8 py-3">
-            Начать использовать
+          <Link href={isAuthenticated ? "/dashboard" : "/register"} className="btn btn-primary px-8 py-3">
+            {isAuthenticated ? 'Перейти в кабинет' : 'Начать использовать'}
           </Link>
         </div>
       </Modal>

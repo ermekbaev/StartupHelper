@@ -31,14 +31,20 @@ export default function DashboardPage() {
   // Sync user data from auth to demo store
   useEffect(() => {
     if (user) {
+      const project = user.project as { name?: string; grantAmount?: number; reportDates?: Array<{ id: string; title: string; date: string }> } | null;
       store.updateProfile({
         name: user.name,
         email: user.email,
         phone: user.phone || "",
         inn: user.inn || "",
         ogrn: user.ogrn || "",
-        projectName: user.project?.name || "",
-        grantAmount: user.project?.grantAmount || 500000,
+        projectName: project?.name || "",
+        grantAmount: project?.grantAmount || 500000,
+        reportDates: project?.reportDates?.map(rd => ({
+          id: rd.id,
+          title: rd.title,
+          date: rd.date,
+        })) || [],
       });
     }
   }, [user]);
@@ -150,7 +156,30 @@ export default function DashboardPage() {
         isOpen={showProfileModal}
         onClose={() => setShowProfileModal(false)}
         profile={store.userProfile}
-        onSave={store.updateProfile}
+        onSave={async (profileData) => {
+          const response = await fetch("/api/users/profile", {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              name: profileData.name,
+              phone: profileData.phone,
+              inn: profileData.inn,
+              ogrn: profileData.ogrn,
+              projectName: profileData.projectName,
+              grantAmount: profileData.grantAmount,
+              reportDates: profileData.reportDates,
+            }),
+          });
+          if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.error || 'Ошибка сохранения профиля');
+          }
+          store.updateProfile(profileData);
+          await refreshUser();
+        }}
         isPremium={user?.isPremium}
         onTogglePremium={async (value: boolean) => {
           const response = await fetch("/api/users/profile", {

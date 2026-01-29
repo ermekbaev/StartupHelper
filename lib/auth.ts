@@ -55,7 +55,13 @@ export async function getCurrentUser(authHeader: string | null) {
       ogrn: true,
       isPremium: true,
       createdAt: true,
-      project: true,
+      project: {
+        include: {
+          reportDates: {
+            orderBy: { date: 'asc' },
+          },
+        },
+      },
     },
   });
 

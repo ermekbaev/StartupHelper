@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { hashPassword, createToken } from '@/lib/auth';
-import { INITIAL_CHECKLISTS } from '@/lib/demo-data';
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,14 +9,14 @@ export async function POST(request: NextRequest) {
 
     if (!email || !password || !name) {
       return NextResponse.json(
-        { error: 'Email, password and name are required' },
+        { error: 'Email, пароль и имя обязательны' },
         { status: 400 }
       );
     }
 
     if (password.length < 6) {
       return NextResponse.json(
-        { error: 'Password must be at least 6 characters' },
+        { error: 'Пароль должен содержать минимум 6 символов' },
         { status: 400 }
       );
     }
@@ -28,14 +27,14 @@ export async function POST(request: NextRequest) {
 
     if (existingUser) {
       return NextResponse.json(
-        { error: 'User with this email already exists' },
+        { error: 'Пользователь с таким email уже существует' },
         { status: 400 }
       );
     }
 
     const hashedPassword = await hashPassword(password);
 
-    // Create user with project and initial checklists in a transaction
+    // Create user with project in a transaction
     const user = await prisma.$transaction(async (tx) => {
       // Create user
       const newUser = await tx.user.create({
@@ -54,23 +53,6 @@ export async function POST(request: NextRequest) {
           userId: newUser.id,
         },
       });
-
-      // Create initial checklists with tasks
-      for (const checklist of INITIAL_CHECKLISTS) {
-        await tx.checklist.create({
-          data: {
-            title: checklist.title,
-            category: checklist.category,
-            userId: newUser.id,
-            tasks: {
-              create: checklist.tasks.map((task) => ({
-                text: task.text,
-                completed: task.completed,
-              })),
-            },
-          },
-        });
-      }
 
       return newUser;
     });
@@ -103,7 +85,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Registration error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Внутренняя ошибка сервера' },
       { status: 500 }
     );
   }

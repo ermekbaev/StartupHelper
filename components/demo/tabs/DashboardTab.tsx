@@ -129,7 +129,7 @@ export function DashboardTab() {
       {/* Welcome */}
       <Card>
         <h1 className="text-2xl font-bold text-gray-900 mb-2">
-          Добро пожаловать, {user?.name?.split(' ')[0] || 'Пользователь'}!
+          Добро пожаловать, {user?.name?.split(' ')[1] || user?.name?.split(' ')[0] || 'Пользователь'}!
         </h1>
         <p className="text-gray-600">
           Проект: {user?.project?.name || 'Мой проект'} • Грант: {grantAmount.toLocaleString()} ₽
@@ -343,11 +343,11 @@ function StatCard({ title, value, icon, iconBg, iconColor, valueColor = 'text-gr
     <Card className="p-3 sm:p-4 lg:p-6">
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <p className="text-xs sm:text-sm text-gray-600 truncate">{title}</p>
-          <p className={`text-lg sm:text-xl lg:text-2xl font-bold ${valueColor} truncate`}>{value}</p>
+          <p className="text-xs sm:text-sm text-gray-600">{title}</p>
+          <p className={`text-base sm:text-lg lg:text-xl font-bold ${valueColor}`}>{value}</p>
         </div>
-        <div className={`w-10 h-10 sm:w-12 sm:h-12 ${iconBg} rounded-full flex items-center justify-center flex-shrink-0`}>
-          <i className={`${icon} ${iconColor} text-lg sm:text-xl`}></i>
+        <div className={`w-8 h-8 sm:w-10 sm:h-10 ${iconBg} rounded-full flex items-center justify-center flex-shrink-0`}>
+          <i className={`${icon} ${iconColor} text-sm sm:text-lg`}></i>
         </div>
       </div>
     </Card>

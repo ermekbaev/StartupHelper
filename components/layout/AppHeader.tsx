@@ -11,7 +11,8 @@ interface AppHeaderProps {
 }
 
 export function AppHeader({ userName, onProfileClick, onLogout, onMenuToggle, isMobileMenuOpen }: AppHeaderProps) {
-  const firstName = userName.split(' ')[0];
+  const nameParts = userName.split(' ');
+  const firstName = nameParts[1] || nameParts[0];
 
   return (
     <header className="bg-white shadow-sm border-b sticky top-0 z-40">

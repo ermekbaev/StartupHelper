@@ -14,12 +14,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get user's calendar events
-    const events = await prisma.calendarEvent.findMany({
-      where: { userId: currentUser.id },
-      orderBy: { date: 'asc' },
-    });
-
     // Get employees with birthdays for HR integration
     const employees = await prisma.employee.findMany({
       where: {
@@ -52,154 +46,12 @@ export async function GET(request: NextRequest) {
     const financialReminders = generateFinancialReminders(currentUser.id);
 
     return NextResponse.json({
-      events,
       employees,
       tasks,
       financialReminders,
     });
   } catch (error) {
     console.error('Get calendar events error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
-
-export async function POST(request: NextRequest) {
-  try {
-    const authHeader = request.headers.get('authorization');
-    const currentUser = await getCurrentUser(authHeader);
-
-    if (!currentUser) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    const body = await request.json();
-    const { title, date, time, location, priority, description } = body;
-
-    if (!title || !date || !time) {
-      return NextResponse.json(
-        { error: 'Title, date and time are required' },
-        { status: 400 }
-      );
-    }
-
-    const event = await prisma.calendarEvent.create({
-      data: {
-        title,
-        date: new Date(date),
-        time,
-        location: location || '',
-        priority: priority?.toUpperCase() || 'NORMAL',
-        description: description || '',
-        userId: currentUser.id,
-      },
-    });
-
-    return NextResponse.json({ event });
-  } catch (error) {
-    console.error('Create calendar event error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
-
-export async function PUT(request: NextRequest) {
-  try {
-    const authHeader = request.headers.get('authorization');
-    const currentUser = await getCurrentUser(authHeader);
-
-    if (!currentUser) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    const body = await request.json();
-    const { id, completed } = body;
-
-    if (!id) {
-      return NextResponse.json(
-        { error: 'Event ID is required' },
-        { status: 400 }
-      );
-    }
-
-    // Verify ownership
-    const event = await prisma.calendarEvent.findFirst({
-      where: { id, userId: currentUser.id },
-    });
-
-    if (!event) {
-      return NextResponse.json(
-        { error: 'Event not found' },
-        { status: 404 }
-      );
-    }
-
-    const updatedEvent = await prisma.calendarEvent.update({
-      where: { id },
-      data: { completed },
-    });
-
-    return NextResponse.json({ event: updatedEvent });
-  } catch (error) {
-    console.error('Update calendar event error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
-
-export async function DELETE(request: NextRequest) {
-  try {
-    const authHeader = request.headers.get('authorization');
-    const currentUser = await getCurrentUser(authHeader);
-
-    if (!currentUser) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-
-    if (!id) {
-      return NextResponse.json(
-        { error: 'Event ID is required' },
-        { status: 400 }
-      );
-    }
-
-    // Verify ownership
-    const event = await prisma.calendarEvent.findFirst({
-      where: { id, userId: currentUser.id },
-    });
-
-    if (!event) {
-      return NextResponse.json(
-        { error: 'Event not found' },
-        { status: 404 }
-      );
-    }
-
-    await prisma.calendarEvent.delete({
-      where: { id },
-    });
-
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Delete calendar event error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

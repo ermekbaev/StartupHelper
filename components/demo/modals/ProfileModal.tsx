@@ -1,35 +1,70 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Modal } from '@/components/ui/Modal';
-import type { UserProfile } from '@/hooks/useDemoStore';
+import type { UserProfile, ReportDate } from '@/hooks/useDemoStore';
 
 interface ProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
   profile: UserProfile;
-  onSave: (profile: UserProfile) => void;
+  onSave: (profile: UserProfile) => Promise<void>;
   isPremium?: boolean;
   onTogglePremium?: (value: boolean) => Promise<void>;
 }
 
 export function ProfileModal({ isOpen, onClose, profile, onSave, isPremium = false, onTogglePremium }: ProfileModalProps) {
   const [premiumLoading, setPremiumLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [reportDates, setReportDates] = useState<ReportDate[]>(profile.reportDates || []);
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  // Синхронизация при открытии модалки
+  useEffect(() => {
+    if (isOpen) {
+      setReportDates(profile.reportDates || []);
+    }
+  }, [isOpen, profile.reportDates]);
+
+  const addReportDate = () => {
+    setReportDates(prev => [...prev, { title: '', date: '' }]);
+  };
+
+  const updateReportDate = (index: number, field: 'title' | 'date', value: string) => {
+    setReportDates(prev => prev.map((rd, i) => i === index ? { ...rd, [field]: value } : rd));
+  };
+
+  const removeReportDate = (index: number) => {
+    setReportDates(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setError('');
+    setIsSaving(true);
+
     const formData = new FormData(e.currentTarget);
 
-    onSave({
-      name: formData.get('name') as string,
-      projectName: formData.get('projectName') as string,
-      grantAmount: Number(formData.get('grantAmount')),
-      email: formData.get('email') as string,
-      phone: formData.get('phone') as string,
-      inn: formData.get('inn') as string,
-      ogrn: formData.get('ogrn') as string,
-    });
-    onClose();
+    // Фильтруем только заполненные даты отчётности
+    const validReportDates = reportDates.filter(rd => rd.title && rd.date);
+
+    try {
+      await onSave({
+        name: formData.get('name') as string,
+        projectName: formData.get('projectName') as string,
+        grantAmount: Number(formData.get('grantAmount')),
+        email: formData.get('email') as string,
+        phone: formData.get('phone') as string,
+        inn: formData.get('inn') as string,
+        ogrn: formData.get('ogrn') as string,
+        reportDates: validReportDates,
+      });
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ошибка сохранения');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleTogglePremium = async () => {
@@ -45,6 +80,11 @@ export function ProfileModal({ isOpen, onClose, profile, onSave, isPremium = fal
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Профиль" maxWidth="lg">
       <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">
+            {error}
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-4">
           <div className="col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-1">ФИО</label>
@@ -85,7 +125,6 @@ export function ProfileModal({ isOpen, onClose, profile, onSave, isPremium = fal
               name="phone"
               type="tel"
               defaultValue={profile.phone}
-              required
               className="input"
             />
           </div>
@@ -119,6 +158,56 @@ export function ProfileModal({ isOpen, onClose, profile, onSave, isPremium = fal
               required
               className="input"
             />
+          </div>
+
+          {/* Даты отчётности */}
+          <div className="col-span-2">
+            <div className="flex justify-between items-center mb-2">
+              <label className="block text-sm font-medium text-gray-700">Этапы отчётности</label>
+              <button
+                type="button"
+                onClick={addReportDate}
+                className="text-blue-600 text-sm font-medium hover:text-blue-700 flex items-center"
+              >
+                <i className="ri-add-line mr-1"></i>
+                Добавить
+              </button>
+            </div>
+
+            {reportDates.length === 0 ? (
+              <p className="text-sm text-gray-500 py-2">Нет этапов отчётности</p>
+            ) : (
+              <div className="space-y-2">
+                {reportDates.map((rd, index) => (
+                  <div key={index} className="flex gap-2 items-start">
+                    <input
+                      type="text"
+                      value={rd.title}
+                      onChange={(e) => updateReportDate(index, 'title', e.target.value)}
+                      placeholder="Название этапа"
+                      className="input flex-1"
+                    />
+                    <input
+                      type="date"
+                      value={rd.date ? rd.date.split('T')[0] : ''}
+                      onChange={(e) => updateReportDate(index, 'date', e.target.value)}
+                      className="input w-40"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeReportDate(index)}
+                      className="p-2 text-gray-400 hover:text-red-600 transition"
+                    >
+                      <i className="ri-delete-bin-line"></i>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="text-xs text-gray-500 mt-1">
+              <i className="ri-information-line mr-1"></i>
+              Даты отчётности отображаются в календаре и на дашборде
+            </p>
           </div>
         </div>
 
@@ -167,11 +256,11 @@ export function ProfileModal({ isOpen, onClose, profile, onSave, isPremium = fal
         </div>
 
         <div className="flex gap-3 pt-4">
-          <button type="button" onClick={onClose} className="btn btn-secondary flex-1">
+          <button type="button" onClick={onClose} disabled={isSaving} className="btn btn-secondary flex-1">
             Отмена
           </button>
-          <button type="submit" className="btn btn-primary flex-1">
-            Сохранить
+          <button type="submit" disabled={isSaving} className="btn btn-primary flex-1">
+            {isSaving ? 'Сохранение...' : 'Сохранить'}
           </button>
         </div>
       </form>

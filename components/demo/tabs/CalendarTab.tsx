@@ -7,18 +7,6 @@ import { useCalendar } from '@/hooks/useCalendar';
 import { useAuth } from '@/contexts/AuthContext';
 import { MONTH_NAMES } from '@/lib/demo-data';
 
-interface CalendarEvent {
-  id: string;
-  title: string;
-  date: string;
-  time: string;
-  location: string;
-  priority: 'NORMAL' | 'IMPORTANT' | 'URGENT';
-  description?: string;
-  completed: boolean;
-  type: 'user';
-}
-
 interface EmployeeBirthday {
   id: string;
   name: string;
@@ -47,23 +35,21 @@ interface AggregatedEvent {
   time?: string;
   location?: string;
   priority: 'NORMAL' | 'IMPORTANT' | 'URGENT';
-  type: 'user' | 'birthday' | 'deadline' | 'finance';
+  type: 'birthday' | 'deadline' | 'finance' | 'report';
   description?: string;
-  completed?: boolean;
 }
 
 const EVENT_TYPE_CONFIG = {
-  user: { icon: 'ri-calendar-event-line', bgColor: 'bg-blue-100', textColor: 'text-blue-600', label: 'Событие' },
   birthday: { icon: 'ri-cake-2-line', bgColor: 'bg-pink-100', textColor: 'text-pink-600', label: 'День рождения' },
   deadline: { icon: 'ri-checkbox-circle-line', bgColor: 'bg-orange-100', textColor: 'text-orange-600', label: 'Дедлайн' },
   finance: { icon: 'ri-money-dollar-circle-line', bgColor: 'bg-green-100', textColor: 'text-green-600', label: 'Финансы' },
+  report: { icon: 'ri-file-list-3-line', bgColor: 'bg-red-100', textColor: 'text-red-600', label: 'Отчёт' },
 };
 
 export function CalendarTab() {
   const { token, user } = useAuth();
   const { currentYear, currentMonth, daysInMonth, firstDayOfMonth, goToPreviousMonth, goToNextMonth, isToday } = useCalendar();
 
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [employees, setEmployees] = useState<EmployeeBirthday[]>([]);
   const [tasks, setTasks] = useState<TaskDeadline[]>([]);
   const [financialReminders, setFinancialReminders] = useState<FinancialReminder[]>([]);
@@ -71,9 +57,7 @@ export function CalendarTab() {
 
   const [selectedDate, setSelectedDate] = useState<number | null>(null);
   const [showDateModal, setShowDateModal] = useState(false);
-  const [showAddEventModal, setShowAddEventModal] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [activeFilter, setActiveFilter] = useState<'all' | 'user' | 'birthday' | 'deadline' | 'finance'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'birthday' | 'deadline' | 'finance' | 'report'>('all');
 
   const fetchCalendarData = async () => {
     if (!token) return;
@@ -85,7 +69,6 @@ export function CalendarTab() {
 
       if (response.ok) {
         const data = await response.json();
-        setEvents(data.events || []);
         setEmployees(data.employees || []);
         setTasks(data.tasks || []);
         setFinancialReminders(data.financialReminders || []);
@@ -104,21 +87,6 @@ export function CalendarTab() {
   // Aggregate all events into a unified format
   const aggregatedEvents = useMemo((): AggregatedEvent[] => {
     const allEvents: AggregatedEvent[] = [];
-
-    // User events
-    events.forEach(event => {
-      allEvents.push({
-        id: event.id,
-        title: event.title,
-        date: new Date(event.date),
-        time: event.time,
-        location: event.location,
-        priority: event.priority,
-        type: 'user',
-        description: event.description,
-        completed: event.completed,
-      });
-    });
 
     // Birthday events (recurring yearly)
     employees.forEach(emp => {
@@ -159,8 +127,39 @@ export function CalendarTab() {
       });
     });
 
+    // Report date reminders (5 days before and the day itself)
+    const project = user?.project as { reportDates?: Array<{ id: string; title: string; date: string }> } | null;
+    if (project?.reportDates) {
+      project.reportDates.forEach(reportDate => {
+        const reportDay = new Date(reportDate.date);
+
+        // Add the report day itself
+        allEvents.push({
+          id: `report-${reportDate.id}`,
+          title: `Сдача отчёта: ${reportDate.title}`,
+          date: reportDay,
+          priority: 'URGENT',
+          type: 'report',
+        });
+
+        // Add reminders for 5, 4, 3, 2, 1 days before
+        for (let daysBefore = 5; daysBefore >= 1; daysBefore--) {
+          const reminderDate = new Date(reportDay);
+          reminderDate.setDate(reminderDate.getDate() - daysBefore);
+
+          allEvents.push({
+            id: `report-reminder-${reportDate.id}-${daysBefore}`,
+            title: `${reportDate.title}: осталось ${daysBefore} ${daysBefore === 1 ? 'день' : daysBefore < 5 ? 'дня' : 'дней'}`,
+            date: reminderDate,
+            priority: daysBefore <= 2 ? 'URGENT' : 'IMPORTANT',
+            type: 'report',
+          });
+        }
+      });
+    }
+
     return allEvents;
-  }, [events, employees, tasks, financialReminders, currentYear]);
+  }, [employees, tasks, financialReminders, currentYear, user]);
 
   // Filter events based on active filter
   const filteredEvents = useMemo(() => {
@@ -199,60 +198,6 @@ export function CalendarTab() {
   const handleDateClick = (day: number) => {
     setSelectedDate(day);
     setShowDateModal(true);
-  };
-
-  const handleAddEvent = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!token || isSubmitting || !selectedDate) return;
-
-    setIsSubmitting(true);
-    const formData = new FormData(e.currentTarget);
-
-    const eventDate = new Date(currentYear, currentMonth, selectedDate);
-
-    try {
-      const response = await fetch('/api/calendar', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          title: formData.get('title'),
-          date: eventDate.toISOString(),
-          time: formData.get('time'),
-          location: formData.get('location'),
-          priority: formData.get('priority'),
-          description: formData.get('description'),
-        }),
-      });
-
-      if (response.ok) {
-        setShowAddEventModal(false);
-        await fetchCalendarData();
-      }
-    } catch (error) {
-      console.error('Error creating event:', error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleDeleteEvent = async (eventId: string) => {
-    if (!token) return;
-
-    try {
-      const response = await fetch(`/api/calendar?id=${eventId}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (response.ok) {
-        await fetchCalendarData();
-      }
-    } catch (error) {
-      console.error('Error deleting event:', error);
-    }
   };
 
   // Get all upcoming events sorted by date
@@ -297,7 +242,7 @@ export function CalendarTab() {
       </div>
 
       {/* Filter Buttons */}
-      <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-4 sm:mb-6 -mx-1 px-1 overflow-x-auto pb-2">
+      <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-4 -mx-1 px-1 overflow-x-auto pb-2">
         <button
           onClick={() => setActiveFilter('all')}
           className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs sm:text-sm font-medium transition whitespace-nowrap ${
@@ -318,6 +263,26 @@ export function CalendarTab() {
             <span className="hidden xs:inline">{config.label}</span>
           </button>
         ))}
+      </div>
+
+      {/* Legend */}
+      <div className="flex flex-wrap gap-3 sm:gap-4 mb-4 sm:mb-6 text-xs sm:text-sm text-gray-600">
+        <div className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full bg-red-500"></span>
+          <span>Отчёт</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full bg-pink-500"></span>
+          <span>День рождения</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full bg-orange-500"></span>
+          <span>Дедлайн</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full bg-green-500"></span>
+          <span>Финансы</span>
+        </div>
       </div>
 
       {/* Calendar Grid */}
@@ -362,10 +327,10 @@ export function CalendarTab() {
               {/* Event type indicators */}
               {dayHasEvents && !isTodayDate && (
                 <div className="absolute bottom-0.5 sm:bottom-1 left-1/2 transform -translate-x-1/2 flex space-x-0.5">
+                  {eventTypes.has('report') && <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-red-500"></span>}
                   {eventTypes.has('birthday') && <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-pink-500"></span>}
                   {eventTypes.has('deadline') && <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-orange-500"></span>}
                   {eventTypes.has('finance') && <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-green-500"></span>}
-                  {eventTypes.has('user') && <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-blue-500"></span>}
                 </div>
               )}
             </div>
@@ -384,36 +349,33 @@ export function CalendarTab() {
               return (
                 <div
                   key={event.id}
-                  className={`flex items-start sm:items-center gap-2 sm:gap-4 p-3 sm:p-4 rounded-lg cursor-pointer border ${
+                  className={`p-3 sm:p-4 rounded-lg border ${
                     event.priority === 'URGENT' ? 'border-red-200 bg-red-50' :
                     event.priority === 'IMPORTANT' ? 'border-yellow-200 bg-yellow-50' :
                     'border-gray-200 bg-gray-50'
                   }`}
                 >
-                  <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center flex-shrink-0 ${typeConfig.bgColor}`}>
-                    <i className={`${typeConfig.icon} ${typeConfig.textColor} text-base sm:text-lg`}></i>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-900 text-sm sm:text-base truncate">{event.title}</p>
-                    <p className="text-xs sm:text-sm text-gray-600 truncate">
-                      {formatEventDate(event.date)}
-                      {event.time && ` • ${event.time}`}
-                      {event.location && ` • ${event.location}`}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-                    <span className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-medium ${typeConfig.bgColor} ${typeConfig.textColor} hidden xs:inline-block`}>
+                  <div className="flex items-start sm:items-center gap-2 sm:gap-4">
+                    <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center flex-shrink-0 ${typeConfig.bgColor}`}>
+                      <i className={`${typeConfig.icon} ${typeConfig.textColor} text-base sm:text-lg`}></i>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-900 text-sm sm:text-base">{event.title}</p>
+                      <p className="text-xs sm:text-sm text-gray-600">
+                        {formatEventDate(event.date)}
+                        {event.time && ` • ${event.time}`}
+                        {event.location && ` • ${event.location}`}
+                      </p>
+                    </div>
+                    <span className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-medium ${typeConfig.bgColor} ${typeConfig.textColor} hidden xs:inline-block flex-shrink-0`}>
                       {typeConfig.label}
                     </span>
-                    {event.type === 'user' && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDeleteEvent(event.id); }}
-                        className="text-gray-400 hover:text-red-600 transition p-1"
-                      >
-                        <i className="ri-delete-bin-line text-sm sm:text-base"></i>
-                      </button>
-                    )}
                   </div>
+                  {event.description && (
+                    <div className="mt-2 ml-10 sm:ml-14 text-xs sm:text-sm text-gray-600 bg-white/50 p-2 rounded border border-gray-200">
+                      {event.description}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -422,7 +384,7 @@ export function CalendarTab() {
           <div className="text-center py-6 sm:py-8 text-gray-500">
             <i className="ri-calendar-line text-3xl sm:text-4xl mb-2"></i>
             <p className="text-sm sm:text-base">Нет запланированных событий</p>
-            <p className="text-xs sm:text-sm">Кликните на дату в календаре, чтобы добавить событие</p>
+            <p className="text-xs sm:text-sm">Добавьте даты отчётов в профиле или задачи в чек-листах</p>
           </div>
         )}
       </div>
@@ -436,11 +398,11 @@ export function CalendarTab() {
         {selectedDate && (
           <>
             {getDateEvents(selectedDate).length > 0 ? (
-              <div className="space-y-3 mb-4">
+              <div className="space-y-3">
                 {getDateEvents(selectedDate).map(event => {
                   const typeConfig = EVENT_TYPE_CONFIG[event.type];
                   return (
-                    <div key={event.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div key={event.id} className="p-3 bg-gray-50 rounded-lg">
                       <div className="flex items-center space-x-3">
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center ${typeConfig.bgColor}`}>
                           <i className={`${typeConfig.icon} ${typeConfig.textColor}`}></i>
@@ -449,79 +411,25 @@ export function CalendarTab() {
                           <p className="font-medium">{event.title}</p>
                           <p className="text-sm text-gray-600">
                             {event.time && `${event.time} • `}
+                            {event.location && `${event.location} • `}
                             {typeConfig.label}
                           </p>
                         </div>
                       </div>
-                      {event.type === 'user' && (
-                        <button
-                          onClick={() => handleDeleteEvent(event.id)}
-                          className="btn btn-danger p-2"
-                        >
-                          <i className="ri-delete-bin-line"></i>
-                        </button>
+                      {event.description && (
+                        <div className="mt-2 ml-11 text-sm text-gray-600 bg-white p-2 rounded border border-gray-200">
+                          {event.description}
+                        </div>
                       )}
                     </div>
                   );
                 })}
               </div>
             ) : (
-              <p className="text-gray-600 mb-4">Нет событий на эту дату</p>
+              <p className="text-gray-600">Нет событий на эту дату</p>
             )}
-            <button
-              onClick={() => { setShowDateModal(false); setShowAddEventModal(true); }}
-              className="btn btn-primary w-full"
-            >
-              <i className="ri-add-line"></i>
-              Добавить событие
-            </button>
           </>
         )}
-      </Modal>
-
-      {/* Add Event Modal */}
-      <Modal
-        isOpen={showAddEventModal}
-        onClose={() => setShowAddEventModal(false)}
-        title="Добавить событие"
-        maxWidth="lg"
-      >
-        <form onSubmit={handleAddEvent} className="space-y-3 sm:space-y-4">
-          <div>
-            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Название</label>
-            <input name="title" type="text" required className="input w-full text-sm sm:text-base" placeholder="Название события" />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-            <div>
-              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Время</label>
-              <input name="time" type="time" required className="input w-full text-sm sm:text-base" />
-            </div>
-            <div>
-              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Место</label>
-              <input name="location" type="text" className="input w-full text-sm sm:text-base" placeholder="Место" />
-            </div>
-          </div>
-          <div>
-            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Приоритет</label>
-            <select name="priority" className="select w-full text-sm sm:text-base" defaultValue="NORMAL">
-              <option value="NORMAL">Плановое</option>
-              <option value="IMPORTANT">Важное</option>
-              <option value="URGENT">Срочное</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Описание</label>
-            <textarea name="description" className="input w-full text-sm sm:text-base" rows={3} placeholder="Описание события"></textarea>
-          </div>
-          <div className="flex gap-2 sm:gap-3 pt-2">
-            <button type="button" onClick={() => setShowAddEventModal(false)} className="btn btn-secondary flex-1 text-sm sm:text-base">
-              Отмена
-            </button>
-            <button type="submit" disabled={isSubmitting} className="btn btn-primary flex-1 text-sm sm:text-base">
-              {isSubmitting ? 'Добавление...' : 'Добавить'}
-            </button>
-          </div>
-        </form>
       </Modal>
     </Card>
 
