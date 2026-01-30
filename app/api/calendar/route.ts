@@ -52,13 +52,9 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Generate financial report reminders (quarterly reports)
-    const financialReminders = generateFinancialReminders(currentUser.id);
-
     return NextResponse.json({
       employees,
       tasks,
-      financialReminders,
       customEvents,
     });
   } catch (error) {
@@ -83,7 +79,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { title, date, time, location, priority, description } = body;
+    const { title, date, time, location, priority, description, eventType } = body;
 
     if (!title || !date) {
       return NextResponse.json(
@@ -92,6 +88,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Map frontend event type to database enum
+    const dbEventType = eventType === 'finance' ? 'FINANCE' : 'CUSTOM';
+
     const event = await prisma.calendarEvent.create({
       data: {
         title,
@@ -99,6 +98,7 @@ export async function POST(request: NextRequest) {
         time: time || '',
         location: location || '',
         priority: priority || 'NORMAL',
+        eventType: dbEventType,
         description: description || null,
         userId: currentUser.id,
       },
@@ -165,39 +165,3 @@ export async function DELETE(request: NextRequest) {
   }
 }
 
-// Helper function to generate financial report reminders
-function generateFinancialReminders(userId: string) {
-  const currentYear = new Date().getFullYear();
-  const reminders = [];
-
-  // Quarterly report deadlines (15th of the month after quarter end)
-  const quarters = [
-    { quarter: 1, month: 3, day: 15, label: 'Отчёт за 1 квартал' },
-    { quarter: 2, month: 6, day: 15, label: 'Отчёт за 2 квартал' },
-    { quarter: 3, month: 9, day: 15, label: 'Отчёт за 3 квартал' },
-    { quarter: 4, month: 12, day: 15, label: 'Годовой отчёт' },
-  ];
-
-  quarters.forEach(q => {
-    reminders.push({
-      id: `finance-q${q.quarter}-${currentYear}`,
-      title: q.label,
-      date: new Date(currentYear, q.month, q.day),
-      type: 'finance',
-      priority: 'IMPORTANT',
-    });
-  });
-
-  // Monthly tax payment reminders (25th of each month)
-  for (let month = 0; month < 12; month++) {
-    reminders.push({
-      id: `tax-${month}-${currentYear}`,
-      title: 'Уплата налогов',
-      date: new Date(currentYear, month, 25),
-      type: 'finance',
-      priority: 'URGENT',
-    });
-  }
-
-  return reminders;
-}

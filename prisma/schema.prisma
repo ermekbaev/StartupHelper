@@ -133,6 +133,7 @@ model CalendarEvent {
   time        String
   location    String
   priority    EventPriority @default(NORMAL)
+  eventType   CalendarEventType @default(CUSTOM)
   description String?
   completed   Boolean  @default(false)
   userId      String
@@ -144,6 +145,11 @@ enum EventPriority {
   NORMAL
   IMPORTANT
   URGENT
+}
+
+enum CalendarEventType {
+  CUSTOM
+  FINANCE
 }
 
 model Service {

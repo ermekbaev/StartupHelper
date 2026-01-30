@@ -20,14 +20,6 @@ interface TaskDeadline {
   checklist: { title: string };
 }
 
-interface FinancialReminder {
-  id: string;
-  title: string;
-  date: string;
-  type: 'finance';
-  priority: 'NORMAL' | 'IMPORTANT' | 'URGENT';
-}
-
 interface CustomEvent {
   id: string;
   title: string;
@@ -35,6 +27,7 @@ interface CustomEvent {
   time: string;
   location: string;
   priority: 'NORMAL' | 'IMPORTANT' | 'URGENT';
+  eventType: 'CUSTOM' | 'FINANCE';
   description?: string;
 }
 
@@ -45,7 +38,7 @@ interface AggregatedEvent {
   time?: string;
   location?: string;
   priority: 'NORMAL' | 'IMPORTANT' | 'URGENT';
-  type: 'birthday' | 'deadline' | 'finance' | 'report' | 'custom';
+  type: 'birthday' | 'deadline' | 'report' | 'custom' | 'finance';
   description?: string;
 }
 
@@ -63,7 +56,6 @@ export function CalendarTab() {
 
   const [employees, setEmployees] = useState<EmployeeBirthday[]>([]);
   const [tasks, setTasks] = useState<TaskDeadline[]>([]);
-  const [financialReminders, setFinancialReminders] = useState<FinancialReminder[]>([]);
   const [customEvents, setCustomEvents] = useState<CustomEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -79,6 +71,7 @@ export function CalendarTab() {
   const [newEventLocation, setNewEventLocation] = useState('');
   const [newEventPriority, setNewEventPriority] = useState<'NORMAL' | 'IMPORTANT' | 'URGENT'>('NORMAL');
   const [newEventDescription, setNewEventDescription] = useState('');
+  const [newEventType, setNewEventType] = useState<'custom' | 'finance'>('custom');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchCalendarData = async () => {
@@ -93,7 +86,6 @@ export function CalendarTab() {
         const data = await response.json();
         setEmployees(data.employees || []);
         setTasks(data.tasks || []);
-        setFinancialReminders(data.financialReminders || []);
         setCustomEvents(data.customEvents || []);
       }
     } catch (error) {
@@ -121,6 +113,7 @@ export function CalendarTab() {
           location: newEventLocation,
           priority: newEventPriority,
           description: newEventDescription,
+          eventType: newEventType,
         }),
       });
 
@@ -132,6 +125,7 @@ export function CalendarTab() {
         setNewEventLocation('');
         setNewEventPriority('NORMAL');
         setNewEventDescription('');
+        setNewEventType('custom');
         setShowAddEventModal(false);
         // Refresh data
         fetchCalendarData();
@@ -203,17 +197,6 @@ export function CalendarTab() {
       }
     });
 
-    // Financial reminders
-    financialReminders.forEach(reminder => {
-      allEvents.push({
-        id: reminder.id,
-        title: reminder.title,
-        date: new Date(reminder.date),
-        priority: reminder.priority,
-        type: 'finance',
-      });
-    });
-
     // Report date reminders (5 days before and the day itself)
     const project = user?.project as { reportDates?: Array<{ id: string; title: string; date: string }> } | null;
     if (project?.reportDates) {
@@ -247,20 +230,21 @@ export function CalendarTab() {
 
     // Custom user events
     customEvents.forEach(event => {
+      const eventType = event.eventType === 'FINANCE' ? 'finance' : 'custom';
       allEvents.push({
-        id: `custom-${event.id}`,
+        id: `${eventType}-${event.id}`,
         title: event.title,
         date: new Date(event.date),
         time: event.time,
         location: event.location,
         priority: event.priority,
-        type: 'custom',
+        type: eventType,
         description: event.description,
       });
     });
 
     return allEvents;
-  }, [employees, tasks, financialReminders, customEvents, currentYear, user]);
+  }, [employees, tasks, customEvents, currentYear, user]);
 
   // Filter events based on active filter
   const filteredEvents = useMemo(() => {
@@ -514,8 +498,8 @@ export function CalendarTab() {
               <div className="space-y-3">
                 {getDateEvents(selectedDate).map(event => {
                   const typeConfig = EVENT_TYPE_CONFIG[event.type];
-                  const isCustomEvent = event.type === 'custom';
-                  const eventId = isCustomEvent ? event.id.replace('custom-', '') : null;
+                  const isUserEvent = event.type === 'custom' || event.type === 'finance';
+                  const eventId = isUserEvent ? event.id.replace(/^(custom|finance)-/, '') : null;
                   return (
                     <div key={event.id} className="p-3 bg-gray-50 rounded-lg">
                       <div className="flex items-center space-x-3">
@@ -530,7 +514,7 @@ export function CalendarTab() {
                             {typeConfig.label}
                           </p>
                         </div>
-                        {isCustomEvent && eventId && (
+                        {isUserEvent && eventId && (
                           <button
                             onClick={() => handleDeleteEvent(eventId)}
                             className="w-8 h-8 flex items-center justify-center text-red-500 hover:bg-red-50 rounded-full flex-shrink-0"
@@ -583,16 +567,31 @@ export function CalendarTab() {
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Дата *
-            </label>
-            <input
-              type="date"
-              value={newEventDate}
-              onChange={(e) => setNewEventDate(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Дата *
+              </label>
+              <input
+                type="date"
+                value={newEventDate}
+                onChange={(e) => setNewEventDate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Тип события
+              </label>
+              <select
+                value={newEventType}
+                onChange={(e) => setNewEventType(e.target.value as 'custom' | 'finance')}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="custom">Событие</option>
+                <option value="finance">Финансы</option>
+              </select>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
