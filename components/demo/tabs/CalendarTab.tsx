@@ -28,6 +28,16 @@ interface FinancialReminder {
   priority: 'NORMAL' | 'IMPORTANT' | 'URGENT';
 }
 
+interface CustomEvent {
+  id: string;
+  title: string;
+  date: string;
+  time: string;
+  location: string;
+  priority: 'NORMAL' | 'IMPORTANT' | 'URGENT';
+  description?: string;
+}
+
 interface AggregatedEvent {
   id: string;
   title: string;
@@ -35,7 +45,7 @@ interface AggregatedEvent {
   time?: string;
   location?: string;
   priority: 'NORMAL' | 'IMPORTANT' | 'URGENT';
-  type: 'birthday' | 'deadline' | 'finance' | 'report';
+  type: 'birthday' | 'deadline' | 'finance' | 'report' | 'custom';
   description?: string;
 }
 
@@ -44,6 +54,7 @@ const EVENT_TYPE_CONFIG = {
   deadline: { icon: 'ri-checkbox-circle-line', bgColor: 'bg-orange-100', textColor: 'text-orange-600', label: 'Дедлайн' },
   finance: { icon: 'ri-money-dollar-circle-line', bgColor: 'bg-green-100', textColor: 'text-green-600', label: 'Финансы' },
   report: { icon: 'ri-file-list-3-line', bgColor: 'bg-red-100', textColor: 'text-red-600', label: 'Отчёт' },
+  custom: { icon: 'ri-calendar-event-line', bgColor: 'bg-blue-100', textColor: 'text-blue-600', label: 'Событие' },
 };
 
 export function CalendarTab() {
@@ -53,11 +64,22 @@ export function CalendarTab() {
   const [employees, setEmployees] = useState<EmployeeBirthday[]>([]);
   const [tasks, setTasks] = useState<TaskDeadline[]>([]);
   const [financialReminders, setFinancialReminders] = useState<FinancialReminder[]>([]);
+  const [customEvents, setCustomEvents] = useState<CustomEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const [selectedDate, setSelectedDate] = useState<number | null>(null);
   const [showDateModal, setShowDateModal] = useState(false);
-  const [activeFilter, setActiveFilter] = useState<'all' | 'birthday' | 'deadline' | 'finance' | 'report'>('all');
+  const [showAddEventModal, setShowAddEventModal] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<'all' | 'birthday' | 'deadline' | 'finance' | 'report' | 'custom'>('all');
+
+  // New event form state
+  const [newEventTitle, setNewEventTitle] = useState('');
+  const [newEventDate, setNewEventDate] = useState('');
+  const [newEventTime, setNewEventTime] = useState('');
+  const [newEventLocation, setNewEventLocation] = useState('');
+  const [newEventPriority, setNewEventPriority] = useState<'NORMAL' | 'IMPORTANT' | 'URGENT'>('NORMAL');
+  const [newEventDescription, setNewEventDescription] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchCalendarData = async () => {
     if (!token) return;
@@ -72,12 +94,77 @@ export function CalendarTab() {
         setEmployees(data.employees || []);
         setTasks(data.tasks || []);
         setFinancialReminders(data.financialReminders || []);
+        setCustomEvents(data.customEvents || []);
       }
     } catch (error) {
       console.error('Error fetching calendar data:', error);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleAddEvent = async () => {
+    if (!token || !newEventTitle || !newEventDate) return;
+
+    setIsSubmitting(true);
+    try {
+      const response = await fetch('/api/calendar', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          title: newEventTitle,
+          date: newEventDate,
+          time: newEventTime,
+          location: newEventLocation,
+          priority: newEventPriority,
+          description: newEventDescription,
+        }),
+      });
+
+      if (response.ok) {
+        // Reset form
+        setNewEventTitle('');
+        setNewEventDate('');
+        setNewEventTime('');
+        setNewEventLocation('');
+        setNewEventPriority('NORMAL');
+        setNewEventDescription('');
+        setShowAddEventModal(false);
+        // Refresh data
+        fetchCalendarData();
+      }
+    } catch (error) {
+      console.error('Error adding event:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteEvent = async (eventId: string) => {
+    if (!token) return;
+
+    try {
+      const response = await fetch(`/api/calendar?id=${eventId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.ok) {
+        fetchCalendarData();
+      }
+    } catch (error) {
+      console.error('Error deleting event:', error);
+    }
+  };
+
+  const openAddEventForDate = (day: number) => {
+    const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    setNewEventDate(dateStr);
+    setShowAddEventModal(true);
+    setShowDateModal(false);
   };
 
   useEffect(() => {
@@ -158,8 +245,22 @@ export function CalendarTab() {
       });
     }
 
+    // Custom user events
+    customEvents.forEach(event => {
+      allEvents.push({
+        id: `custom-${event.id}`,
+        title: event.title,
+        date: new Date(event.date),
+        time: event.time,
+        location: event.location,
+        priority: event.priority,
+        type: 'custom',
+        description: event.description,
+      });
+    });
+
     return allEvents;
-  }, [employees, tasks, financialReminders, currentYear, user]);
+  }, [employees, tasks, financialReminders, customEvents, currentYear, user]);
 
   // Filter events based on active filter
   const filteredEvents = useMemo(() => {
@@ -260,9 +361,16 @@ export function CalendarTab() {
             }`}
           >
             <i className={`${config.icon} text-xs sm:text-sm`}></i>
-            <span className="hidden xs:inline">{config.label}</span>
+            <span>{config.label}</span>
           </button>
         ))}
+        <button
+          onClick={() => setShowAddEventModal(true)}
+          className="px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs sm:text-sm font-medium transition flex items-center space-x-1 whitespace-nowrap bg-blue-600 text-white hover:bg-blue-700 ml-auto"
+        >
+          <i className="ri-add-line text-xs sm:text-sm"></i>
+          <span>Добавить</span>
+        </button>
       </div>
 
       {/* Legend */}
@@ -282,6 +390,10 @@ export function CalendarTab() {
         <div className="flex items-center gap-1.5">
           <span className="w-2.5 h-2.5 rounded-full bg-green-500"></span>
           <span>Финансы</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+          <span>Событие</span>
         </div>
       </div>
 
@@ -331,6 +443,7 @@ export function CalendarTab() {
                   {eventTypes.has('birthday') && <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-pink-500"></span>}
                   {eventTypes.has('deadline') && <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-orange-500"></span>}
                   {eventTypes.has('finance') && <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-green-500"></span>}
+                  {eventTypes.has('custom') && <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-blue-500"></span>}
                 </div>
               )}
             </div>
@@ -401,13 +514,15 @@ export function CalendarTab() {
               <div className="space-y-3">
                 {getDateEvents(selectedDate).map(event => {
                   const typeConfig = EVENT_TYPE_CONFIG[event.type];
+                  const isCustomEvent = event.type === 'custom';
+                  const eventId = isCustomEvent ? event.id.replace('custom-', '') : null;
                   return (
                     <div key={event.id} className="p-3 bg-gray-50 rounded-lg">
                       <div className="flex items-center space-x-3">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${typeConfig.bgColor}`}>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${typeConfig.bgColor}`}>
                           <i className={`${typeConfig.icon} ${typeConfig.textColor}`}></i>
                         </div>
-                        <div>
+                        <div className="flex-1 min-w-0">
                           <p className="font-medium">{event.title}</p>
                           <p className="text-sm text-gray-600">
                             {event.time && `${event.time} • `}
@@ -415,6 +530,15 @@ export function CalendarTab() {
                             {typeConfig.label}
                           </p>
                         </div>
+                        {isCustomEvent && eventId && (
+                          <button
+                            onClick={() => handleDeleteEvent(eventId)}
+                            className="w-8 h-8 flex items-center justify-center text-red-500 hover:bg-red-50 rounded-full flex-shrink-0"
+                            title="Удалить"
+                          >
+                            <i className="ri-delete-bin-line"></i>
+                          </button>
+                        )}
                       </div>
                       {event.description && (
                         <div className="mt-2 ml-11 text-sm text-gray-600 bg-white p-2 rounded border border-gray-200">
@@ -426,10 +550,125 @@ export function CalendarTab() {
                 })}
               </div>
             ) : (
-              <p className="text-gray-600">Нет событий на эту дату</p>
+              <p className="text-gray-600 text-center py-4">Нет событий на эту дату</p>
             )}
+            <button
+              onClick={() => openAddEventForDate(selectedDate)}
+              className="mt-4 w-full py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center justify-center space-x-2"
+            >
+              <i className="ri-add-line"></i>
+              <span>Добавить событие</span>
+            </button>
           </>
         )}
+      </Modal>
+
+      {/* Add Event Modal */}
+      <Modal
+        isOpen={showAddEventModal}
+        onClose={() => setShowAddEventModal(false)}
+        title="Добавить событие"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Название *
+            </label>
+            <input
+              type="text"
+              value={newEventTitle}
+              onChange={(e) => setNewEventTitle(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Введите название события"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Дата *
+            </label>
+            <input
+              type="date"
+              value={newEventDate}
+              onChange={(e) => setNewEventDate(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Время
+              </label>
+              <input
+                type="time"
+                value={newEventTime}
+                onChange={(e) => setNewEventTime(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Приоритет
+              </label>
+              <select
+                value={newEventPriority}
+                onChange={(e) => setNewEventPriority(e.target.value as 'NORMAL' | 'IMPORTANT' | 'URGENT')}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="NORMAL">Обычный</option>
+                <option value="IMPORTANT">Важный</option>
+                <option value="URGENT">Срочный</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Место
+            </label>
+            <input
+              type="text"
+              value={newEventLocation}
+              onChange={(e) => setNewEventLocation(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Введите место проведения"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Описание
+            </label>
+            <textarea
+              value={newEventDescription}
+              onChange={(e) => setNewEventDescription(e.target.value)}
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              placeholder="Введите описание события"
+            />
+          </div>
+
+          <div className="flex space-x-3 pt-2">
+            <button
+              onClick={() => setShowAddEventModal(false)}
+              className="flex-1 py-2 px-4 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+            >
+              Отмена
+            </button>
+            <button
+              onClick={handleAddEvent}
+              disabled={!newEventTitle || !newEventDate || isSubmitting}
+              className="flex-1 py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+            >
+              {isSubmitting ? (
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+              ) : (
+                'Сохранить'
+              )}
+            </button>
+          </div>
+        </div>
       </Modal>
     </Card>
 

@@ -2,10 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { hashPassword, createToken } from '@/lib/auth';
 
+// Секретный ключ для тестовой регистрации
+const REGISTRATION_SECRET_KEY = process.env.REGISTRATION_SECRET_KEY || 'STARTUP2024TEST';
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, password, name, projectName, grantAmount } = body;
+    const { email, password, name, projectName, grantAmount, secretKey } = body;
+
+    // Проверка секретного ключа
+    if (!secretKey || secretKey !== REGISTRATION_SECRET_KEY) {
+      return NextResponse.json(
+        { error: 'Неверный ключ доступа' },
+        { status: 403 }
+      );
+    }
 
     if (!email || !password || !name) {
       return NextResponse.json(

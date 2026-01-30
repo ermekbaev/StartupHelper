@@ -42,6 +42,16 @@ export async function GET(request: NextRequest) {
       },
     });
 
+    // Get user's custom calendar events
+    const customEvents = await prisma.calendarEvent.findMany({
+      where: {
+        userId: currentUser.id,
+      },
+      orderBy: {
+        date: 'asc',
+      },
+    });
+
     // Generate financial report reminders (quarterly reports)
     const financialReminders = generateFinancialReminders(currentUser.id);
 
@@ -49,9 +59,105 @@ export async function GET(request: NextRequest) {
       employees,
       tasks,
       financialReminders,
+      customEvents,
     });
   } catch (error) {
     console.error('Get calendar events error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const authHeader = request.headers.get('authorization');
+    const currentUser = await getCurrentUser(authHeader);
+
+    if (!currentUser) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const body = await request.json();
+    const { title, date, time, location, priority, description } = body;
+
+    if (!title || !date) {
+      return NextResponse.json(
+        { error: 'Title and date are required' },
+        { status: 400 }
+      );
+    }
+
+    const event = await prisma.calendarEvent.create({
+      data: {
+        title,
+        date: new Date(date),
+        time: time || '',
+        location: location || '',
+        priority: priority || 'NORMAL',
+        description: description || null,
+        userId: currentUser.id,
+      },
+    });
+
+    return NextResponse.json(event, { status: 201 });
+  } catch (error) {
+    console.error('Create calendar event error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const authHeader = request.headers.get('authorization');
+    const currentUser = await getCurrentUser(authHeader);
+
+    if (!currentUser) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const { searchParams } = new URL(request.url);
+    const eventId = searchParams.get('id');
+
+    if (!eventId) {
+      return NextResponse.json(
+        { error: 'Event ID is required' },
+        { status: 400 }
+      );
+    }
+
+    // Verify the event belongs to the user
+    const event = await prisma.calendarEvent.findFirst({
+      where: {
+        id: eventId,
+        userId: currentUser.id,
+      },
+    });
+
+    if (!event) {
+      return NextResponse.json(
+        { error: 'Event not found' },
+        { status: 404 }
+      );
+    }
+
+    await prisma.calendarEvent.delete({
+      where: { id: eventId },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Delete calendar event error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

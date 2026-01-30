@@ -12,6 +12,7 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [projectName, setProjectName] = useState('');
   const [grantAmount, setGrantAmount] = useState('500000');
+  const [secretKey, setSecretKey] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -21,6 +22,11 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (!secretKey.trim()) {
+      setError('Введите ключ доступа');
+      return;
+    }
 
     if (password !== confirmPassword) {
       setError('Пароли не совпадают');
@@ -41,6 +47,7 @@ export default function RegisterPage() {
         name: `${lastName} ${firstName}`.trim(),
         projectName: projectName || undefined,
         grantAmount: grantAmount ? parseInt(grantAmount) : undefined,
+        secretKey: secretKey.trim(),
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка регистрации');
@@ -67,6 +74,25 @@ export default function RegisterPage() {
                 {error}
               </div>
             )}
+
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <label htmlFor="secretKey" className="block text-sm font-medium text-amber-800 mb-2">
+                <i className="ri-key-2-line mr-1"></i>
+                Ключ доступа для тестирования *
+              </label>
+              <input
+                id="secretKey"
+                type="text"
+                value={secretKey}
+                onChange={(e) => setSecretKey(e.target.value)}
+                required
+                className="w-full px-4 py-3 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition bg-white"
+                placeholder="Введите ключ доступа"
+              />
+              <p className="text-xs text-amber-600 mt-2">
+                Для регистрации необходим специальный ключ доступа
+              </p>
+            </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>

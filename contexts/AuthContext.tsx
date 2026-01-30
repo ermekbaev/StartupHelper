@@ -31,6 +31,7 @@ interface RegisterData {
   name: string;
   projectName?: string;
   grantAmount?: number;
+  secretKey?: string;
 }
 
 interface AuthContextType {
