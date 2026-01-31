@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
+import { CalendarEventType } from '@prisma/client';
 
 export async function GET(request: NextRequest) {
   try {
@@ -89,14 +90,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Map frontend event type to database enum
-    const eventTypeMap: Record<string, string> = {
-      finance: 'FINANCE',
-      report: 'REPORT',
-      birthday: 'BIRTHDAY',
-      deadline: 'DEADLINE',
-      custom: 'CUSTOM',
+    const eventTypeMap: Record<string, CalendarEventType> = {
+      finance: CalendarEventType.FINANCE,
+      report: CalendarEventType.REPORT,
+      birthday: CalendarEventType.BIRTHDAY,
+      deadline: CalendarEventType.DEADLINE,
+      custom: CalendarEventType.CUSTOM,
     };
-    const dbEventType = eventTypeMap[eventType] || 'CUSTOM';
+    const dbEventType = eventTypeMap[eventType] || CalendarEventType.CUSTOM;
 
     const event = await prisma.calendarEvent.create({
       data: {
