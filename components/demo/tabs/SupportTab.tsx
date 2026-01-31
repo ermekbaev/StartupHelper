@@ -284,7 +284,7 @@ export function SupportTab() {
             </div>
             <div className="min-w-0">
               <p className="text-xs sm:text-sm text-gray-600">Email</p>
-              <p className="font-medium text-sm sm:text-base truncate">support@startuphelper.ru</p>
+              <p className="font-medium text-sm sm:text-base truncate">digital.co@yandex.ru</p>
             </div>
           </div>
           <div className="flex items-center space-x-3 p-3 sm:p-4 bg-gray-50 rounded-lg">
@@ -293,7 +293,7 @@ export function SupportTab() {
             </div>
             <div className="min-w-0">
               <p className="text-xs sm:text-sm text-gray-600">Телефон</p>
-              <p className="font-medium text-sm sm:text-base">+7 (999) 123-45-67</p>
+              <p className="font-medium text-sm sm:text-base">+7 987 432-44-46</p>
             </div>
           </div>
           <div className="flex items-center space-x-3 p-3 sm:p-4 bg-gray-50 rounded-lg">
@@ -302,7 +302,7 @@ export function SupportTab() {
             </div>
             <div className="min-w-0">
               <p className="text-xs sm:text-sm text-gray-600">Telegram</p>
-              <p className="font-medium text-sm sm:text-base">@startuphelper_bot</p>
+              <p className="font-medium text-sm sm:text-base">@urstartupru</p>
             </div>
           </div>
         </div>

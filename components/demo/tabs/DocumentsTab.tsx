@@ -54,24 +54,34 @@ export function DocumentsTab() {
   const handleDownloadTemplate = async (templateId: number) => {
     setDownloadingId(templateId);
     try {
-      const response = await fetch(`/api/templates?id=${templateId}`);
+      const response = await fetch(`/api/templates?id=${templateId}&download=true`);
       if (response.ok) {
-        const data = await response.json();
-        const { template } = data;
+        const blob = await response.blob();
+        const contentDisposition = response.headers.get('Content-Disposition');
+        let fileName = `template-${templateId}.docx`;
 
-        // Создаем и скачиваем файл
-        const blob = new Blob([template.content], { type: 'text/plain;charset=utf-8' });
+        if (contentDisposition) {
+          const match = contentDisposition.match(/filename="(.+)"/);
+          if (match) {
+            fileName = decodeURIComponent(match[1]);
+          }
+        }
+
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = template.fileName;
+        a.download = fileName;
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
+      } else {
+        const data = await response.json();
+        alert(data.message || 'Файл не найден');
       }
     } catch (error) {
       console.error('Error downloading template:', error);
+      alert('Ошибка при скачивании файла');
     } finally {
       setDownloadingId(null);
     }

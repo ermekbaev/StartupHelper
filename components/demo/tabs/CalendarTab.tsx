@@ -27,7 +27,7 @@ interface CustomEvent {
   time: string;
   location: string;
   priority: 'NORMAL' | 'IMPORTANT' | 'URGENT';
-  eventType: 'CUSTOM' | 'FINANCE';
+  eventType: 'CUSTOM' | 'FINANCE' | 'REPORT' | 'BIRTHDAY' | 'DEADLINE';
   description?: string;
 }
 
@@ -71,7 +71,7 @@ export function CalendarTab() {
   const [newEventLocation, setNewEventLocation] = useState('');
   const [newEventPriority, setNewEventPriority] = useState<'NORMAL' | 'IMPORTANT' | 'URGENT'>('NORMAL');
   const [newEventDescription, setNewEventDescription] = useState('');
-  const [newEventType, setNewEventType] = useState<'custom' | 'finance'>('custom');
+  const [newEventType, setNewEventType] = useState<'custom' | 'finance' | 'report' | 'birthday' | 'deadline'>('custom');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchCalendarData = async () => {
@@ -230,7 +230,14 @@ export function CalendarTab() {
 
     // Custom user events
     customEvents.forEach(event => {
-      const eventType = event.eventType === 'FINANCE' ? 'finance' : 'custom';
+      const eventTypeMap: Record<string, AggregatedEvent['type']> = {
+        FINANCE: 'finance',
+        REPORT: 'report',
+        BIRTHDAY: 'birthday',
+        DEADLINE: 'deadline',
+        CUSTOM: 'custom',
+      };
+      const eventType = eventTypeMap[event.eventType] || 'custom';
       allEvents.push({
         id: `${eventType}-${event.id}`,
         title: event.title,
@@ -498,8 +505,9 @@ export function CalendarTab() {
               <div className="space-y-3">
                 {getDateEvents(selectedDate).map(event => {
                   const typeConfig = EVENT_TYPE_CONFIG[event.type];
-                  const isUserEvent = event.type === 'custom' || event.type === 'finance';
-                  const eventId = isUserEvent ? event.id.replace(/^(custom|finance)-/, '') : null;
+                  const userEventTypes = ['custom', 'finance', 'report', 'birthday', 'deadline'];
+                  const isUserEvent = userEventTypes.includes(event.type);
+                  const eventId = isUserEvent ? event.id.replace(/^(custom|finance|report|birthday|deadline)-/, '') : null;
                   return (
                     <div key={event.id} className="p-3 bg-gray-50 rounded-lg">
                       <div className="flex items-center space-x-3">
@@ -585,11 +593,14 @@ export function CalendarTab() {
               </label>
               <select
                 value={newEventType}
-                onChange={(e) => setNewEventType(e.target.value as 'custom' | 'finance')}
+                onChange={(e) => setNewEventType(e.target.value as 'custom' | 'finance' | 'report' | 'birthday' | 'deadline')}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="custom">Событие</option>
                 <option value="finance">Финансы</option>
+                <option value="report">Отчёт</option>
+                <option value="birthday">День рождения</option>
+                <option value="deadline">Дедлайн</option>
               </select>
             </div>
           </div>

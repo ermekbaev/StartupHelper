@@ -154,14 +154,10 @@ export const MONTH_NAMES = [
 export const DOCUMENT_TEMPLATES = [
   { id: 1, title: 'Бизнес-план', description: 'Шаблон и рекомендации по составлению бизнес-плана', icon: 'ri-file-chart-line', iconBg: 'bg-blue-100', iconColor: 'text-blue-600' },
   { id: 2, title: 'Развитие стартап-проекта', description: 'Шаблон и рекомендации по развитию стартапа', icon: 'ri-rocket-line', iconBg: 'bg-purple-100', iconColor: 'text-purple-600' },
-  { id: 3, title: 'Отчет по 1 этапу', description: 'Форма отчета по первому этапу проекта', icon: 'ri-file-paper-line', iconBg: 'bg-green-100', iconColor: 'text-green-600' },
-  { id: 4, title: 'Отчет по 2 этапу', description: 'Форма отчета по второму этапу проекта', icon: 'ri-file-list-line', iconBg: 'bg-orange-100', iconColor: 'text-orange-600' },
   { id: 5, title: 'Воинский учет организации', description: 'Формы и рекомендации по ведению воинского учета', icon: 'ri-shield-user-line', iconBg: 'bg-red-100', iconColor: 'text-red-600' },
   { id: 6, title: 'Трудовой договор', description: 'Шаблон трудового договора с сотрудником', icon: 'ri-file-user-line', iconBg: 'bg-indigo-100', iconColor: 'text-indigo-600' },
-  { id: 7, title: 'Приказ о приеме', description: 'Шаблон приказа о приеме на работу', icon: 'ri-file-add-line', iconBg: 'bg-teal-100', iconColor: 'text-teal-600' },
-  { id: 8, title: 'Договор услуг', description: 'Шаблон договора на оказание услуг', icon: 'ri-file-shield-line', iconBg: 'bg-cyan-100', iconColor: 'text-cyan-600' },
-  { id: 9, title: 'Акт выполненных работ', description: 'Шаблон акта выполненных работ', icon: 'ri-file-check-line', iconBg: 'bg-lime-100', iconColor: 'text-lime-600' },
+  { id: 7, title: 'Приказ о приеме', description: 'Шаблон приказа о приеме на работу', icon: 'ri-file-add-line', iconBg: 'bg-green-100', iconColor: 'text-green-600' },
+  { id: 8, title: 'Договор услуг', description: 'Шаблон договора на оказание услуг', icon: 'ri-file-shield-line', iconBg: 'bg-orange-100', iconColor: 'text-orange-600' },
+  { id: 9, title: 'Акт выполненных работ', description: 'Шаблон акта выполненных работ', icon: 'ri-file-check-line', iconBg: 'bg-pink-100', iconColor: 'text-pink-600' },
   { id: 10, title: 'Счет на оплату', description: 'Шаблон счета на оплату', icon: 'ri-file-paper-2-line', iconBg: 'bg-amber-100', iconColor: 'text-amber-600' },
-  { id: 11, title: 'УПД', description: 'Универсальный передаточный документ', icon: 'ri-file-transfer-line', iconBg: 'bg-pink-100', iconColor: 'text-pink-600' },
-  { id: 12, title: 'Налоговая декларация', description: 'Шаблоны налоговых деклараций', icon: 'ri-government-line', iconBg: 'bg-violet-100', iconColor: 'text-violet-600' },
 ];

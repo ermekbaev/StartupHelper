@@ -46,7 +46,7 @@ const pricingTiers: PricingTier[] = [
     name: "Pro",
     price: 990,
     period: "в месяц",
-    description: "Для растущего бизнеса",
+    description: "Для активных проектов",
     features: [
       "До 15 сотрудников",
       "Все шаблоны документов",
@@ -191,16 +191,8 @@ export default function PremiumPage() {
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14 sm:h-16">
-            <Link href="/" className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                <i className="ri-rocket-line text-white text-sm"></i>
-              </div>
-              <span
-                className="text-lg sm:text-xl font-bold text-blue-600"
-                style={{ fontFamily: '"Dancing Script", cursive' }}
-              >
-                StartupHelper
-              </span>
+            <Link href="/" className="text-xl sm:text-2xl font-bold text-blue-600" style={{fontFamily: '"Dancing Script", cursive'}}>
+              StartupHelper
             </Link>
 
             <div className="flex items-center space-x-2 sm:space-x-4">
@@ -259,7 +251,7 @@ export default function PremiumPage() {
             Выберите подходящий тариф
           </h1>
           <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto mb-8 sm:mb-10">
-            Расширьте возможности вашего бизнеса с Premium-функциями. Начните с
+            Расширьте возможности вашего проекта с Premium-функциями. Начните с
             бесплатного плана или выберите Pro для максимальной эффективности.
           </p>
 
@@ -518,8 +510,8 @@ export default function PremiumPage() {
             Готовы начать?
           </h2>
           <p className="text-purple-100 text-lg mb-8 max-w-2xl mx-auto">
-            Присоединяйтесь к тысячам предпринимателей, которые уже используют
-            StartupHelper для развития своего бизнеса
+            Присоединяйтесь к тысячам ученых, которые уже используют
+            StartupHelper для успешного выполнения грантовых проектов
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <button
@@ -546,17 +538,9 @@ export default function PremiumPage() {
       <footer className="bg-gray-900 text-gray-400 py-8">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                <i className="ri-rocket-line text-white text-sm"></i>
-              </div>
-              <span
-                className="text-white font-bold"
-                style={{ fontFamily: '"Dancing Script", cursive' }}
-              >
-                StartupHelper
-              </span>
-            </div>
+            <Link href="/" className="text-xl sm:text-2xl font-bold text-white" style={{fontFamily: '"Dancing Script", cursive'}}>
+              StartupHelper
+            </Link>
             <div className="flex items-center space-x-6 text-sm">
               <Link href="/" className="hover:text-white transition">
                 Главная

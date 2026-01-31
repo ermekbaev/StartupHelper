@@ -89,7 +89,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Map frontend event type to database enum
-    const dbEventType = eventType === 'finance' ? 'FINANCE' : 'CUSTOM';
+    const eventTypeMap: Record<string, string> = {
+      finance: 'FINANCE',
+      report: 'REPORT',
+      birthday: 'BIRTHDAY',
+      deadline: 'DEADLINE',
+      custom: 'CUSTOM',
+    };
+    const dbEventType = eventTypeMap[eventType] || 'CUSTOM';
 
     const event = await prisma.calendarEvent.create({
       data: {

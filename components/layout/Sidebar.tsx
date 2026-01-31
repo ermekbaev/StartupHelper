@@ -75,9 +75,14 @@ export function Sidebar({ activeTab, onTabChange, isOpen = false, onClose }: Sid
         <div className="bg-white rounded-none lg:rounded-xl shadow-lg lg:shadow-sm h-full lg:h-auto p-4 sm:p-6">
           {/* Mobile header */}
           <div className="flex items-center justify-between mb-6 lg:hidden">
-            <span className="text-lg font-bold text-blue-600" style={{fontFamily: '"Dancing Script", cursive'}}>
-              StartupHelper
-            </span>
+            <Link href="/" className="relative">
+              <span className="text-lg font-bold text-blue-600" style={{fontFamily: '"Dancing Script", cursive'}}>
+                StartupHelper
+              </span>
+              <span className="absolute -top-2 -right-8 px-1.5 py-0.5 text-[9px] font-bold bg-gradient-to-r from-violet-600 via-purple-500 to-pink-500 text-white rounded-md uppercase shadow-lg transform rotate-12 border border-white/20 animate-pulse">
+                beta
+              </span>
+            </Link>
             <button
               onClick={onClose}
               className="p-2 rounded-lg hover:bg-gray-100 transition"

@@ -12,6 +12,8 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [projectName, setProjectName] = useState('');
   const [grantAmount, setGrantAmount] = useState('500000');
+  const [reportDate, setReportDate] = useState('');
+  const [reportTitle, setReportTitle] = useState('');
   const [secretKey, setSecretKey] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -47,6 +49,8 @@ export default function RegisterPage() {
         name: `${lastName} ${firstName}`.trim(),
         projectName: projectName || undefined,
         grantAmount: grantAmount ? parseInt(grantAmount) : undefined,
+        reportDate: reportDate || undefined,
+        reportTitle: reportTitle || undefined,
         secretKey: secretKey.trim(),
       });
     } catch (err) {
@@ -60,8 +64,13 @@ export default function RegisterPage() {
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center px-4 py-8">
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
-          <Link href="/" className="text-3xl font-bold text-blue-600" style={{ fontFamily: '"Dancing Script", cursive' }}>
-            StartupHelper
+          <Link href="/" className="relative inline-block">
+            <span className="text-3xl font-bold text-blue-600" style={{ fontFamily: '"Dancing Script", cursive' }}>
+              StartupHelper
+            </span>
+            <span className="absolute -top-3 -right-9 px-2 py-0.5 text-[10px] font-bold bg-gradient-to-r from-violet-600 via-purple-500 to-pink-500 text-white rounded-md uppercase shadow-lg transform rotate-12 border border-white/20 animate-pulse">
+              beta
+            </span>
           </Link>
           <h1 className="text-2xl font-bold text-gray-900 mt-6">Создать аккаунт</h1>
           <p className="text-gray-600 mt-2">Зарегистрируйтесь для доступа к платформе</p>
@@ -219,6 +228,34 @@ export default function RegisterPage() {
                     placeholder="500000"
                     min="0"
                   />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label htmlFor="reportDate" className="block text-sm font-medium text-gray-700 mb-1">
+                      Дата отчёта
+                    </label>
+                    <input
+                      id="reportDate"
+                      type="date"
+                      value={reportDate}
+                      onChange={(e) => setReportDate(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="reportTitle" className="block text-sm font-medium text-gray-700 mb-1">
+                      Название этапа
+                    </label>
+                    <input
+                      id="reportTitle"
+                      type="text"
+                      value={reportTitle}
+                      onChange={(e) => setReportTitle(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                      placeholder="Этап 1"
+                    />
+                  </div>
                 </div>
               </div>
             </div>

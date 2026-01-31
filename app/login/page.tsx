@@ -30,8 +30,13 @@ export default function LoginPage() {
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center px-4">
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
-          <Link href="/" className="text-3xl font-bold text-blue-600" style={{ fontFamily: '"Dancing Script", cursive' }}>
-            StartupHelper
+          <Link href="/" className="relative inline-block">
+            <span className="text-3xl font-bold text-blue-600" style={{ fontFamily: '"Dancing Script", cursive' }}>
+              StartupHelper
+            </span>
+            <span className="absolute -top-3 -right-9 px-2 py-0.5 text-[10px] font-bold bg-gradient-to-r from-violet-600 via-purple-500 to-pink-500 text-white rounded-md uppercase shadow-lg transform rotate-12 border border-white/20 animate-pulse">
+              beta
+            </span>
           </Link>
           <h1 className="text-2xl font-bold text-gray-900 mt-6">Вход в аккаунт</h1>
           <p className="text-gray-600 mt-2">Введите данные для входа</p>

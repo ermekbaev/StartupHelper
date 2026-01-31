@@ -31,6 +31,8 @@ interface RegisterData {
   name: string;
   projectName?: string;
   grantAmount?: number;
+  reportDate?: string;
+  reportTitle?: string;
   secretKey?: string;
 }
 

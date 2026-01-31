@@ -150,6 +150,9 @@ enum EventPriority {
 enum CalendarEventType {
   CUSTOM
   FINANCE
+  REPORT
+  BIRTHDAY
+  DEADLINE
 }
 
 model Service {

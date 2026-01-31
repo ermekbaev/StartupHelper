@@ -21,8 +21,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "StartupHelper - ИП помощник для грантополучателей",
-  description: "Платформа для успешного ведения бизнеса студентами-грантополучателями",
+  title: "StartupHelper - Помощник для ученых-грантополучателей",
+  description: "Платформа для успешного ведения деятельности учеными-грантополучателями",
 };
 
 export default function RootLayout({

@@ -44,6 +44,7 @@ export function HRTab() {
   const [showAddChecklistModal, setShowAddChecklistModal] = useState(false);
   const [selectedChecklistId, setSelectedChecklistId] = useState<string | null>(null);
   const [isTaskSubmitting, setIsTaskSubmitting] = useState(false);
+  const [newChecklistTasks, setNewChecklistTasks] = useState<string[]>(['']);
 
   const fetchEmployees = async () => {
     if (!token) return;
@@ -90,16 +91,9 @@ export function HRTab() {
     setIsSubmitting(true);
     const formData = new FormData(e.currentTarget);
     const title = formData.get('title') as string;
-    const tasks: string[] = [];
+    const tasks = newChecklistTasks.filter(t => t.trim());
 
-    for (let i = 1; i <= 5; i++) {
-      const taskText = formData.get(`task-${i}`) as string;
-      if (taskText && taskText.trim()) {
-        tasks.push(taskText.trim());
-      }
-    }
-
-    if (!title || tasks.length === 0) {
+    if (!title) {
       setIsSubmitting(false);
       return;
     }
@@ -120,6 +114,7 @@ export function HRTab() {
 
       if (response.ok) {
         setShowAddChecklistModal(false);
+        setNewChecklistTasks(['']);
         await fetchHrChecklists();
       }
     } catch (error) {
@@ -626,7 +621,7 @@ export function HRTab() {
       {/* Add Checklist Modal */}
       <Modal
         isOpen={showAddChecklistModal}
-        onClose={() => setShowAddChecklistModal(false)}
+        onClose={() => { setShowAddChecklistModal(false); setNewChecklistTasks(['']); }}
         title="Новый кадровый чек-лист"
         maxWidth="lg"
       >
@@ -636,22 +631,47 @@ export function HRTab() {
             <input name="title" type="text" required className="input w-full text-sm sm:text-base" placeholder="Например: Приём нового сотрудника" />
           </div>
           <div>
-            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">Задачи</label>
+            <div className="flex justify-between items-center mb-2">
+              <label className="block text-xs sm:text-sm font-medium text-gray-700">Задачи</label>
+              <span className="text-xs text-gray-500">(опционально)</span>
+            </div>
             <div className="space-y-2">
-              {[1, 2, 3, 4, 5].map(i => (
-                <input
-                  key={i}
-                  name={`task-${i}`}
-                  type="text"
-                  className="input w-full text-sm sm:text-base"
-                  placeholder={`Задача ${i}${i > 2 ? ' (опционально)' : ''}`}
-                  required={i <= 2}
-                />
+              {newChecklistTasks.map((task, index) => (
+                <div key={index} className="flex gap-2">
+                  <input
+                    type="text"
+                    value={task}
+                    onChange={(e) => {
+                      const updated = [...newChecklistTasks];
+                      updated[index] = e.target.value;
+                      setNewChecklistTasks(updated);
+                    }}
+                    className="input w-full text-sm sm:text-base"
+                    placeholder={`Задача ${index + 1}`}
+                  />
+                  {newChecklistTasks.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setNewChecklistTasks(prev => prev.filter((_, i) => i !== index))}
+                      className="p-2 text-gray-400 hover:text-red-600 transition"
+                    >
+                      <i className="ri-delete-bin-line"></i>
+                    </button>
+                  )}
+                </div>
               ))}
             </div>
+            <button
+              type="button"
+              onClick={() => setNewChecklistTasks(prev => [...prev, ''])}
+              className="mt-2 text-blue-600 text-xs sm:text-sm font-medium hover:text-blue-700 flex items-center"
+            >
+              <i className="ri-add-line mr-1"></i>
+              Добавить задачу
+            </button>
           </div>
           <div className="flex gap-2 sm:gap-3 pt-2">
-            <button type="button" onClick={() => setShowAddChecklistModal(false)} className="btn btn-secondary flex-1 text-sm sm:text-base">
+            <button type="button" onClick={() => { setShowAddChecklistModal(false); setNewChecklistTasks(['']); }} className="btn btn-secondary flex-1 text-sm sm:text-base">
               Отмена
             </button>
             <button type="submit" disabled={isSubmitting} className="btn btn-primary flex-1 text-sm sm:text-base">

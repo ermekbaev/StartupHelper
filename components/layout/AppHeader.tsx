@@ -28,23 +28,14 @@ export function AppHeader({ userName, onProfileClick, onLogout, onMenuToggle, is
           </button>
 
           {/* Logo */}
-          <div className="flex items-center">
-            <Link href="/" className="flex items-center space-x-2 cursor-pointer">
-              <div className="relative">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center transform rotate-12">
-                  <div className="w-5 h-5 sm:w-6 sm:h-6 bg-white rounded-lg flex items-center justify-center">
-                    <i className="ri-lightbulb-flash-line text-blue-600 text-xs sm:text-sm"></i>
-                  </div>
-                </div>
-                <div className="absolute -top-1 -right-1 w-3 h-3 sm:w-4 sm:h-4 bg-orange-400 rounded-full flex items-center justify-center">
-                  <i className="ri-star-fill text-white text-[8px] sm:text-xs"></i>
-                </div>
-              </div>
-              <span className="text-xl sm:text-2xl font-bold text-blue-600 hidden xs:inline" style={{fontFamily: '"Dancing Script", cursive'}}>
-                StartupHelper
-              </span>
-            </Link>
-          </div>
+          <Link href="/" className="relative">
+            <span className="text-xl sm:text-2xl font-bold text-blue-600" style={{fontFamily: '"Dancing Script", cursive'}}>
+              StartupHelper
+            </span>
+            <span className="absolute -top-3 -right-9 px-2 py-0.5 text-[10px] font-bold bg-gradient-to-r from-violet-600 via-purple-500 to-pink-500 text-white rounded-md uppercase shadow-lg transform rotate-12 border border-white/20 animate-pulse">
+              beta
+            </span>
+          </Link>
 
           {/* Right side actions */}
           <div className="flex items-center space-x-2 sm:space-x-4">

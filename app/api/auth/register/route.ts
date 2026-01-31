@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { hashPassword, createToken } from '@/lib/auth';
+import { INITIAL_CHECKLISTS } from '@/lib/demo-data';
 
 // Секретный ключ для тестовой регистрации
 const REGISTRATION_SECRET_KEY = process.env.REGISTRATION_SECRET_KEY || 'STARTUP2024TEST';
@@ -8,7 +9,7 @@ const REGISTRATION_SECRET_KEY = process.env.REGISTRATION_SECRET_KEY || 'STARTUP2
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, password, name, projectName, grantAmount, secretKey } = body;
+    const { email, password, name, projectName, grantAmount, reportDate, reportTitle, secretKey } = body;
 
     // Проверка секретного ключа
     if (!secretKey || secretKey !== REGISTRATION_SECRET_KEY) {
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
 
     const hashedPassword = await hashPassword(password);
 
-    // Create user with project in a transaction
+    // Create user with project and default checklists in a transaction
     const user = await prisma.$transaction(async (tx) => {
       // Create user
       const newUser = await tx.user.create({
@@ -57,13 +58,41 @@ export async function POST(request: NextRequest) {
       });
 
       // Create default project
-      await tx.project.create({
+      const project = await tx.project.create({
         data: {
           name: projectName || 'Мой проект',
           grantAmount: grantAmount || 500000,
           userId: newUser.id,
         },
       });
+
+      // Create report date if provided
+      if (reportDate) {
+        await tx.reportDate.create({
+          data: {
+            title: reportTitle || 'Этап 1',
+            date: new Date(reportDate),
+            projectId: project.id,
+          },
+        });
+      }
+
+      // Create default checklists with tasks
+      for (const checklistData of INITIAL_CHECKLISTS) {
+        await tx.checklist.create({
+          data: {
+            title: checklistData.title,
+            category: checklistData.category,
+            userId: newUser.id,
+            tasks: {
+              create: checklistData.tasks.map(task => ({
+                text: task.text,
+                completed: task.completed,
+              })),
+            },
+          },
+        });
+      }
 
       return newUser;
     });

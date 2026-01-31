@@ -83,16 +83,25 @@ export async function GET(request: NextRequest) {
     // Общая сумма расходов
     const totalSpent = transactions.reduce((sum, tx) => sum + tx.amount, 0);
 
-    // Получаем грант
+    // Получаем грант с датами отчетов
+    const now = new Date();
     const project = await prisma.project.findUnique({
       where: { userId: currentUser.id },
+      include: {
+        reportDates: {
+          where: {
+            date: { gte: now },
+          },
+          orderBy: { date: 'asc' },
+          take: 1,
+        },
+      },
     });
 
     const grantAmount = project?.grantAmount || 500000;
     const remainingGrant = grantAmount - totalSpent;
 
     // Ближайшие события из календаря
-    const now = new Date();
     const calendarEvents = await prisma.calendarEvent.findMany({
       where: {
         userId: currentUser.id,
@@ -103,35 +112,15 @@ export async function GET(request: NextRequest) {
       take: 5,
     });
 
-    // Расчет дней до ближайшего отчета (условно - конец квартала)
-    const currentMonth = now.getMonth();
-    let currentYear = now.getFullYear();
-    let reportMonth: number;
+    // Расчет дней до ближайшего отчета из базы данных
+    let daysUntilReport: number | null = null;
+    let nextReportTitle: string | null = null;
 
-    // Определяем ближайший квартальный отчёт
-    if (currentMonth < 3) reportMonth = 2; // Март
-    else if (currentMonth < 6) reportMonth = 5; // Июнь
-    else if (currentMonth < 9) reportMonth = 8; // Сентябрь
-    else reportMonth = 11; // Декабрь
-
-    let reportDate = new Date(currentYear, reportMonth + 1, 0); // Последний день месяца
-
-    // Если проект создан менее 30 дней назад — показываем следующий квартал
-    if (project?.createdAt) {
-      const projectAge = Math.ceil((now.getTime() - new Date(project.createdAt).getTime()) / (1000 * 60 * 60 * 24));
-
-      if (projectAge < 30) {
-        // Переносим на следующий квартал
-        reportMonth += 3;
-        if (reportMonth > 11) {
-          reportMonth -= 12;
-          currentYear += 1;
-        }
-        reportDate = new Date(currentYear, reportMonth + 1, 0);
-      }
+    if (project?.reportDates && project.reportDates.length > 0) {
+      const nextReport = project.reportDates[0];
+      daysUntilReport = Math.ceil((new Date(nextReport.date).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      nextReportTitle = nextReport.title;
     }
-
-    const daysUntilReport = Math.ceil((reportDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
     return NextResponse.json({
       stats: {
@@ -142,6 +131,7 @@ export async function GET(request: NextRequest) {
         remainingGrant,
         grantAmount,
         daysUntilReport,
+        nextReportTitle,
       },
       expensesByCategory: Object.entries(expensesByCategory).map(([category, amount]) => ({
         category,

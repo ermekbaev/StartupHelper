@@ -12,7 +12,8 @@ interface DashboardStats {
   totalSpent: number;
   remainingGrant: number;
   grantAmount: number;
-  daysUntilReport: number;
+  daysUntilReport: number | null;
+  nextReportTitle: string | null;
 }
 
 interface ExpenseByCategory {
@@ -162,14 +163,25 @@ export function DashboardTab() {
           iconBg="bg-purple-100"
           iconColor="text-purple-600"
         />
-        <StatCard
-          title="Дней до отчёта"
-          value={String(stats?.daysUntilReport || 0)}
-          valueColor={stats && stats.daysUntilReport < 14 ? 'text-orange-600' : 'text-gray-900'}
-          icon="ri-alarm-warning-line"
-          iconBg="bg-orange-100"
-          iconColor="text-orange-600"
-        />
+        {stats?.daysUntilReport !== null && stats?.nextReportTitle ? (
+          <StatCard
+            title={`До: ${stats.nextReportTitle}`}
+            value={`${stats.daysUntilReport} дн.`}
+            valueColor={stats.daysUntilReport < 14 ? 'text-orange-600' : 'text-gray-900'}
+            icon="ri-alarm-warning-line"
+            iconBg="bg-orange-100"
+            iconColor="text-orange-600"
+          />
+        ) : (
+          <StatCard
+            title="Дата отчёта"
+            value="—"
+            subtitle="Не указана"
+            icon="ri-calendar-check-line"
+            iconBg="bg-gray-100"
+            iconColor="text-gray-400"
+          />
+        )}
       </div>
 
       {/* Grant Progress */}
@@ -315,7 +327,7 @@ export function DashboardTab() {
           </div>
           <h3 className="text-gray-700 font-medium mb-2">Найдите специалистов для вашего проекта</h3>
           <p className="text-gray-500 text-sm mb-4">
-            Размещайте вакансии и находите талантливых специалистов среди студентов и выпускников
+            Размещайте вакансии и находите талантливых специалистов для вашей команды
           </p>
           <button
             disabled
@@ -336,15 +348,17 @@ interface StatCardProps {
   iconBg: string;
   iconColor: string;
   valueColor?: string;
+  subtitle?: string;
 }
 
-function StatCard({ title, value, icon, iconBg, iconColor, valueColor = 'text-gray-900' }: StatCardProps) {
+function StatCard({ title, value, icon, iconBg, iconColor, valueColor = 'text-gray-900', subtitle }: StatCardProps) {
   return (
     <Card className="p-3 sm:p-4 lg:p-6">
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0 flex-1">
           <p className="text-xs sm:text-sm text-gray-600">{title}</p>
           <p className={`text-base sm:text-lg lg:text-xl font-bold ${valueColor}`}>{value}</p>
+          {subtitle && <p className="text-xs text-gray-400">{subtitle}</p>}
         </div>
         <div className={`w-8 h-8 sm:w-10 sm:h-10 ${iconBg} rounded-full flex items-center justify-center flex-shrink-0`}>
           <i className={`${icon} ${iconColor} text-sm sm:text-lg`}></i>
