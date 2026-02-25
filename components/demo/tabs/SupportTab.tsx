@@ -19,12 +19,6 @@ export function SupportTab() {
   const [isSending, setIsSending] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
-  const scrollToBottom = (smooth = true) => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-    }
-  };
-
   const fetchMessages = async () => {
     if (!token) return;
 
@@ -49,9 +43,10 @@ export function SupportTab() {
   }, [token]);
 
   useEffect(() => {
-    // Scroll after DOM updates
     const timer = setTimeout(() => {
-      scrollToBottom();
+      if (chatContainerRef.current) {
+        chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+      }
     }, 50);
     return () => clearTimeout(timer);
   }, [messages]);
@@ -64,7 +59,6 @@ export function SupportTab() {
     const messageText = inputText.trim();
     setInputText('');
 
-    // Optimistically add user message
     const tempUserMessage: Message = {
       id: `temp-${Date.now()}`,
       text: messageText,
@@ -85,7 +79,6 @@ export function SupportTab() {
 
       if (response.ok) {
         const data = await response.json();
-        // Replace temp message with real ones
         setMessages(prev => {
           const filtered = prev.filter(m => m.id !== tempUserMessage.id);
           return [...filtered, data.userMessage, data.supportMessage];
@@ -93,7 +86,6 @@ export function SupportTab() {
       }
     } catch (error) {
       console.error('Error sending message:', error);
-      // Remove optimistic message on error
       setMessages(prev => prev.filter(m => m.id !== tempUserMessage.id));
     } finally {
       setIsSending(false);
@@ -136,7 +128,6 @@ export function SupportTab() {
     return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
   };
 
-  // Group messages by date
   const groupedMessages = messages.reduce((groups, message) => {
     const dateKey = new Date(message.createdAt).toDateString();
     if (!groups[dateKey]) {
@@ -148,10 +139,24 @@ export function SupportTab() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Chat */}
+      {/* AI Assistant hint banner */}
+      <div className="flex items-center space-x-3 bg-violet-50 border border-violet-200 rounded-xl px-4 py-3">
+        <div className="w-8 h-8 bg-violet-100 rounded-full flex items-center justify-center flex-shrink-0">
+          <i className="ri-robot-2-line text-violet-600 text-sm"></i>
+        </div>
+        <p className="text-sm text-violet-700">
+          Нужен совет по бизнесу? Используйте{' '}
+          <span className="font-semibold">ИИ Помощника</span> — кнопка в правом нижнем углу экрана.
+        </p>
+      </div>
+
+      {/* Support Chat (preset answers) */}
       <Card>
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 sm:mb-6">
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Поддержка</h1>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Техническая поддержка</h1>
+            <p className="text-xs sm:text-sm text-gray-500 mt-0.5">Ответы на типовые вопросы по платформе</p>
+          </div>
           {messages.length > 0 && (
             <button
               onClick={handleClearChat}
@@ -173,10 +178,10 @@ export function SupportTab() {
             ) : messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-gray-500">
                 <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-100 rounded-full flex items-center justify-center mb-3 sm:mb-4">
-                  <i className="ri-chat-3-line text-2xl sm:text-3xl text-gray-400"></i>
+                  <i className="ri-customer-service-2-line text-2xl sm:text-3xl text-gray-400"></i>
                 </div>
-                <p className="font-medium mb-1 text-sm sm:text-base">Начните диалог</p>
-                <p className="text-xs sm:text-sm text-center px-4">Задайте вопрос, и наш бот-помощник постарается вам помочь</p>
+                <p className="font-medium mb-1 text-sm sm:text-base">Задайте вопрос</p>
+                <p className="text-xs sm:text-sm text-center px-4">Наш помощник ответит на вопросы о работе платформы</p>
               </div>
             ) : (
               <>
@@ -244,7 +249,7 @@ export function SupportTab() {
               </button>
             </div>
             <p className="text-[10px] sm:text-xs text-gray-500 mt-2">
-              Бот-помощник ответит автоматически. По сложным вопросам обратитесь по контактам ниже.
+              Ответы на типовые вопросы о платформе. По сложным вопросам обратитесь к специалистам по контактам ниже.
             </p>
           </form>
         </div>
@@ -262,9 +267,7 @@ export function SupportTab() {
           ].map((question, idx) => (
             <button
               key={idx}
-              onClick={() => {
-                setInputText(question);
-              }}
+              onClick={() => setInputText(question)}
               className="text-left p-2.5 sm:p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition text-xs sm:text-sm text-gray-700"
             >
               <i className="ri-question-line text-blue-600 mr-1.5 sm:mr-2"></i>

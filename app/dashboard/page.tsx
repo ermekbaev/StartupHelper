@@ -15,6 +15,7 @@ import {
 } from "@/components/demo/tabs";
 import { ProfileModal } from "@/components/demo/modals";
 import { ProjectOnboarding } from "@/components/demo/ProjectOnboarding";
+import { AiChatWidget } from "@/components/AiChatWidget";
 import { useDemoStore } from "@/hooks/useDemoStore";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -151,6 +152,8 @@ export default function DashboardPage() {
       <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 lg:py-8">
         <div className="lg:ml-72 xl:ml-80">{renderTab()}</div>
       </div>
+
+      <AiChatWidget />
 
       <ProfileModal
         isOpen={showProfileModal}
