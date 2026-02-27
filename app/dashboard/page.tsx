@@ -12,6 +12,7 @@ import {
   FinanceTab,
   AnalyticsTab,
   SupportTab,
+  AiAssistantTab,
 } from "@/components/demo/tabs";
 import { ProfileModal } from "@/components/demo/modals";
 import { ProjectOnboarding } from "@/components/demo/ProjectOnboarding";
@@ -118,6 +119,9 @@ export default function DashboardPage() {
       case "support":
         return <SupportTab />;
 
+      case "ai-assistant":
+        return <AiAssistantTab />;
+
       default:
         return <DashboardTab />;
     }
@@ -153,7 +157,7 @@ export default function DashboardPage() {
         <div className="lg:ml-72 xl:ml-80">{renderTab()}</div>
       </div>
 
-      <AiChatWidget />
+      {activeTab !== 'ai-assistant' && <AiChatWidget />}
 
       <ProfileModal
         isOpen={showProfileModal}

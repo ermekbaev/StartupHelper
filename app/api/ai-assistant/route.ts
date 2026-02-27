@@ -46,6 +46,59 @@ const SYSTEM_PROMPT = `Вы — ИИ-помощник платформы Startup
 - Давайте конкретные, практичные ответы (3-5 предложений)
 - Будьте дружелюбны и профессиональны`;
 
+const MAX_TEXT_LENGTH = 8000;
+
+async function extractFileText(fileType: string, fileName: string, base64Data: string): Promise<string | null> {
+  const buffer = Buffer.from(base64Data, "base64");
+
+  try {
+    // PDF
+    if (fileType === "application/pdf" || fileName.endsWith(".pdf")) {
+      const pdfParse = (await import("pdf-parse/lib/pdf-parse.js")).default;
+      const parsed = await pdfParse(buffer);
+      return parsed.text.slice(0, MAX_TEXT_LENGTH);
+    }
+
+    // DOCX
+    if (
+      fileType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+      fileName.endsWith(".docx")
+    ) {
+      const mammoth = await import("mammoth");
+      const result = await mammoth.extractRawText({ buffer });
+      return result.value.slice(0, MAX_TEXT_LENGTH);
+    }
+
+    // Excel XLSX/XLS
+    if (
+      fileType === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+      fileType === "application/vnd.ms-excel" ||
+      fileName.endsWith(".xlsx") ||
+      fileName.endsWith(".xls")
+    ) {
+      const XLSX = await import("xlsx");
+      const workbook = XLSX.read(buffer, { type: "buffer" });
+      const lines: string[] = [];
+      for (const sheetName of workbook.SheetNames) {
+        const sheet = workbook.Sheets[sheetName];
+        const csv = XLSX.utils.sheet_to_csv(sheet);
+        lines.push(`[Лист: ${sheetName}]\n${csv}`);
+      }
+      return lines.join("\n\n").slice(0, MAX_TEXT_LENGTH);
+    }
+
+    // CSV
+    if (fileType === "text/csv" || fileName.endsWith(".csv")) {
+      return buffer.toString("utf-8").slice(0, MAX_TEXT_LENGTH);
+    }
+
+    return null;
+  } catch (err) {
+    console.error("File parse error:", err);
+    return null;
+  }
+}
+
 // POST - Send message to AI assistant (stateless, no DB storage)
 export async function POST(request: NextRequest) {
   try {
@@ -68,7 +121,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { message } = body;
+    const { message, file } = body;
 
     if (!message || !message.trim()) {
       return NextResponse.json(
@@ -84,12 +137,65 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate file if provided
+    if (file) {
+      const fileSizeBytes = Math.ceil((file.data?.length || 0) * 0.75); // base64 → bytes approx
+      if (fileSizeBytes > 10 * 1024 * 1024) {
+        return NextResponse.json(
+          { error: "Файл слишком большой (максимум 10 МБ)" },
+          { status: 400 },
+        );
+      }
+    }
+
     const apiKey = process.env.DEEPSEEK_API_KEY;
     if (!apiKey) {
       return NextResponse.json({
         reply:
           "ИИ-помощник временно недоступен. Пожалуйста, попробуйте позже или обратитесь в техническую поддержку.",
       });
+    }
+
+    // Build messages array
+    type MessageContent =
+      | string
+      | Array<{ type: string; text?: string; image_url?: { url: string } }>;
+
+    interface ChatMessage {
+      role: "system" | "user" | "assistant";
+      content: MessageContent;
+    }
+
+    const messages: ChatMessage[] = [
+      { role: "system", content: SYSTEM_PROMPT },
+    ];
+
+    const isImage =
+      file &&
+      (file.type?.startsWith("image/") ||
+        /\.(jpg|jpeg|png|gif|webp)$/i.test(file.name || ""));
+
+    if (file && isImage) {
+      // deepseek-chat is text-only — images not supported
+      return NextResponse.json({
+        reply: "Анализ изображений пока не поддерживается в текущей модели. Загрузите PDF, DOCX, Excel или CSV — эти форматы читаются полностью.",
+      });
+    } else if (file) {
+      // Document: extract text and prepend to message
+      const extractedText = await extractFileText(file.type, file.name || "", file.data || "");
+      if (extractedText) {
+        const fullMessage = `[Содержимое файла "${file.name}":]
+${extractedText}
+
+Вопрос пользователя: ${message.trim()}`;
+        messages.push({ role: "user", content: fullMessage });
+      } else {
+        return NextResponse.json({
+          reply: `Не удалось прочитать файл "${file.name}". Поддерживаются: PDF, DOCX, XLSX, XLS, CSV.`,
+        });
+      }
+    } else {
+      messages.push({ role: "user", content: message.trim() });
     }
 
     const response = await fetch("https://api.deepseek.com/v1/chat/completions", {
@@ -100,11 +206,8 @@ export async function POST(request: NextRequest) {
       },
       body: JSON.stringify({
         model: "deepseek-chat",
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: message.trim() },
-        ],
-        max_tokens: 600,
+        messages,
+        max_tokens: 800,
         temperature: 0.7,
       }),
     });

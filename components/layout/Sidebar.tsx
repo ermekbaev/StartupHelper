@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import Link from 'next/link';
 
-export type TabType = 'dashboard' | 'calendar' | 'checklists' | 'documents' | 'hr' | 'finance' | 'analytics' | 'support';
+export type TabType = 'dashboard' | 'calendar' | 'checklists' | 'documents' | 'hr' | 'finance' | 'analytics' | 'support' | 'ai-assistant';
 
 interface SidebarProps {
   activeTab: TabType;
@@ -21,6 +21,7 @@ const navItems: { id: TabType; label: string; icon: string }[] = [
   { id: 'finance', label: 'Финансы', icon: 'ri-wallet-3-line' },
   { id: 'analytics', label: 'Аналитика', icon: 'ri-pie-chart-line' },
   { id: 'support', label: 'Поддержка', icon: 'ri-customer-service-line' },
+  { id: 'ai-assistant', label: 'ИИ Помощник', icon: 'ri-sparkling-2-line' },
 ];
 
 export function Sidebar({ activeTab, onTabChange, isOpen = false, onClose }: SidebarProps) {

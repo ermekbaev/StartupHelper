@@ -3,10 +3,18 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
+interface AttachedFile {
+  name: string;
+  type: string;
+  data: string; // base64
+  previewUrl?: string; // for images
+}
+
 interface AiMessage {
   id: string;
   text: string;
   role: 'user' | 'assistant';
+  fileName?: string; // if message had an attached file
 }
 
 const SUGGESTIONS = [
@@ -16,6 +24,31 @@ const SUGGESTIONS = [
   'Что такое MVP и как его запустить?',
 ];
 
+const ACCEPTED_TYPES = 'application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv';
+
+function getFileIcon(type: string, name: string): string {
+  if (type.startsWith('image/')) return 'ri-image-line';
+  if (type === 'application/pdf' || name.endsWith('.pdf')) return 'ri-file-pdf-line';
+  if (name.endsWith('.docx') || name.endsWith('.doc')) return 'ri-file-word-line';
+  if (name.endsWith('.xlsx') || name.endsWith('.xls')) return 'ri-file-excel-line';
+  if (name.endsWith('.csv')) return 'ri-file-chart-line';
+  return 'ri-file-line';
+}
+
+function readFileAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      // strip "data:...;base64," prefix
+      const base64 = result.split(',')[1];
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 export function AiChatWidget() {
   const { token } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
@@ -24,8 +57,10 @@ export function AiChatWidget() {
   const [input, setInput] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [hasUnread, setHasUnread] = useState(false);
+  const [attachedFile, setAttachedFile] = useState<AttachedFile | null>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (messagesRef.current) {
@@ -40,26 +75,72 @@ export function AiChatWidget() {
     }
   }, [isOpen]);
 
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Файл слишком большой. Максимальный размер — 10 МБ.');
+      return;
+    }
+
+    const base64 = await readFileAsBase64(file);
+    const isImage = file.type.startsWith('image/');
+
+    setAttachedFile({
+      name: file.name,
+      type: file.type,
+      data: base64,
+      previewUrl: isImage ? URL.createObjectURL(file) : undefined,
+    });
+
+    // reset input so same file can be re-selected
+    e.target.value = '';
+  };
+
+  const handleRemoveFile = () => {
+    if (attachedFile?.previewUrl) URL.revokeObjectURL(attachedFile.previewUrl);
+    setAttachedFile(null);
+  };
+
   const handleSend = async (text?: string) => {
     const messageText = (text ?? input).trim();
-    if (!token || !messageText || isSending) return;
+    if (!token || (!messageText && !attachedFile) || isSending) return;
 
+    const fileToSend = attachedFile;
     setInput('');
+    setAttachedFile(null);
     setIsSending(true);
+
+    const displayText = messageText || `[Файл: ${fileToSend?.name}]`;
 
     setMessages(prev => [
       ...prev,
-      { id: `user-${Date.now()}`, text: messageText, role: 'user' },
+      {
+        id: `user-${Date.now()}`,
+        text: displayText,
+        role: 'user',
+        fileName: fileToSend && messageText ? fileToSend.name : undefined,
+      },
     ]);
 
     try {
+      const body: Record<string, unknown> = { message: messageText || 'Проанализируй этот файл.' };
+      if (fileToSend) {
+        body.file = {
+          name: fileToSend.name,
+          type: fileToSend.type,
+          data: fileToSend.data,
+        };
+      }
+
       const res = await fetch('/api/ai-assistant', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ message: messageText }),
+        body: JSON.stringify(body),
       });
 
       if (res.ok) {
@@ -195,14 +276,23 @@ export function AiChatWidget() {
                     )}
 
                     {/* Bubble */}
-                    <div
-                      className={`rounded-2xl px-3.5 py-2.5 max-w-[78%] text-sm leading-relaxed ${
-                        msg.role === 'user'
-                          ? 'bg-violet-600 text-white rounded-br-sm'
-                          : 'bg-white text-gray-800 rounded-bl-sm border border-gray-100 shadow-sm'
-                      }`}
-                    >
-                      <p className="whitespace-pre-wrap">{msg.text}</p>
+                    <div className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} max-w-[78%]`}>
+                      {/* File badge in message */}
+                      {msg.fileName && (
+                        <div className="flex items-center gap-1 text-[10px] text-violet-300 mb-1 px-1">
+                          <i className="ri-attachment-2 text-[10px]"></i>
+                          <span className="truncate max-w-[160px]">{msg.fileName}</span>
+                        </div>
+                      )}
+                      <div
+                        className={`rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
+                          msg.role === 'user'
+                            ? 'bg-violet-600 text-white rounded-br-sm'
+                            : 'bg-white text-gray-800 rounded-bl-sm border border-gray-100 shadow-sm'
+                        }`}
+                      >
+                        <p className="whitespace-pre-wrap">{msg.text}</p>
+                      </div>
                     </div>
 
                     {/* User avatar */}
@@ -238,7 +328,52 @@ export function AiChatWidget() {
             onSubmit={handleSubmit}
             className="flex-shrink-0 px-3 py-3 bg-white border-t border-gray-100"
           >
+            {/* File preview */}
+            {attachedFile && (
+              <div className="flex items-center gap-2 mb-2 px-1">
+                {attachedFile.previewUrl ? (
+                  <img
+                    src={attachedFile.previewUrl}
+                    alt={attachedFile.name}
+                    className="w-10 h-10 rounded-lg object-cover border border-gray-200 flex-shrink-0"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-lg bg-violet-50 border border-violet-200 flex items-center justify-center flex-shrink-0">
+                    <i className={`${getFileIcon(attachedFile.type, attachedFile.name)} text-violet-500 text-base`}></i>
+                  </div>
+                )}
+                <span className="text-xs text-gray-600 truncate flex-1">{attachedFile.name}</span>
+                <button
+                  type="button"
+                  onClick={handleRemoveFile}
+                  className="w-5 h-5 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition flex-shrink-0"
+                >
+                  <i className="ri-close-line text-xs"></i>
+                </button>
+              </div>
+            )}
+
             <div className="flex items-center gap-2 bg-gray-100 rounded-xl px-3 py-1.5 focus-within:ring-2 focus-within:ring-violet-300 transition">
+              {/* Hidden file input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={ACCEPTED_TYPES}
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+
+              {/* Attach button */}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isSending}
+                className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-violet-600 hover:bg-violet-100 transition disabled:opacity-40 flex-shrink-0"
+                title="Прикрепить файл (PDF, DOCX, XLSX, CSV)"
+              >
+                <i className="ri-attachment-2 text-base"></i>
+              </button>
+
               <input
                 ref={inputRef}
                 type="text"
@@ -246,12 +381,12 @@ export function AiChatWidget() {
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 className="flex-1 bg-transparent text-sm outline-none py-1.5 text-gray-700 placeholder:text-gray-400"
-                placeholder="Задайте вопрос..."
+                placeholder={attachedFile ? 'Задайте вопрос по файлу...' : 'Задайте вопрос...'}
                 disabled={isSending}
               />
               <button
                 type="submit"
-                disabled={isSending || !input.trim()}
+                disabled={isSending || (!input.trim() && !attachedFile)}
                 className="w-8 h-8 rounded-lg flex items-center justify-center text-white flex-shrink-0 transition disabled:opacity-40 disabled:cursor-not-allowed bg-violet-600 hover:bg-violet-700"
               >
                 <i className="ri-send-plane-fill text-sm"></i>

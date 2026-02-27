@@ -6,3 +6,4 @@ export { HRTab } from './HRTab';
 export { FinanceTab } from './FinanceTab';
 export { AnalyticsTab } from './AnalyticsTab';
 export { SupportTab } from './SupportTab';
+export { AiAssistantTab } from './AiAssistantTab';
