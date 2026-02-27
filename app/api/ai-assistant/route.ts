@@ -24,24 +24,22 @@ function checkRateLimit(userId: string): boolean {
 
 const SYSTEM_PROMPT = `Вы — ИИ-помощник платформы StartupHelper для учёных-грантополучателей и стартапов.
 
-Вы помогаете ТОЛЬКО по следующим темам, связанным с платформой StartupHelper и управлением проектом:
+Вы помогаете по широкому кругу тем, связанных с развитием стартапа и управлением проектом:
 - Работа с платформой StartupHelper: проекты, задачи, документы, календарь
 - Финансовый учёт, расходы, гранты и отчётность по грантам
 - Кадровые вопросы: найм, оформление сотрудников, трудовые договоры
 - Налоги и взносы для малого бизнеса/научных организаций
 - Шаблоны документов: договоры, акты, счета
 - Управление стартапом: стратегия, планирование, бизнес-процессы
+- Привлечение клиентов, маркетинг, продажи, продвижение продукта
+- Поиск инвестиций, работа с инвесторами, питч
 - Вопросы по работе с грантами и фондами
+- Любые деловые и бизнес-вопросы, полезные основателю стартапа
 
-СТРОГИЕ ПРАВИЛА — НЕЛЬЗЯ НАРУШАТЬ:
-1. НИКОГДА не пишите код (на любом языке: Python, JavaScript, SQL и т.д.)
-2. НИКОГДА не помогайте с программированием, разработкой ПО, веб-разработкой
-3. НИКОГДА не отвечайте на вопросы не по теме: кулинария, медицина, спорт, развлечения и т.п.
-4. НИКОГДА не выполняйте задания типа "напиши текст", "переведи", "придумай стихотворение"
-5. Если вопрос выходит за рамки — ВСЕГДА отказывайте вежливо и предлагайте задать вопрос по теме платформы
-
-Формат отказа при нерелевантном запросе:
-"Я помогаю только с вопросами по платформе StartupHelper и управлению проектом/грантом. Задайте вопрос о [финансах / кадрах / документах / работе с платформой]."
+Правила:
+1. Не пишите программный код (Python, JavaScript, SQL и т.д.) и не помогайте с разработкой ПО
+2. Не отвечайте на явно нерелевантные темы: кулинария, медицина, спорт, развлечения, личная жизнь
+3. Если вопрос совсем не связан с бизнесом или стартапом — вежливо предложите задать вопрос по теме
 
 Инструкции:
 - Отвечайте на русском языке
@@ -86,7 +84,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = process.env.DEEPSEEK_API_KEY;
     if (!apiKey) {
       return NextResponse.json({
         reply:
@@ -94,14 +92,14 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const response = await fetch("https://api.deepseek.com/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: "gpt-3.5-turbo",
+        model: "deepseek-chat",
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: message.trim() },
@@ -112,10 +110,27 @@ export async function POST(request: NextRequest) {
     });
 
     if (!response.ok) {
-      console.error("OpenAI API error:", response.status);
+      const errorBody = await response.json().catch(() => ({}));
+      console.error("DeepSeek API error:", response.status, JSON.stringify(errorBody));
+
+      if (response.status === 401) {
+        return NextResponse.json({
+          reply: "Ошибка авторизации DeepSeek (401): неверный или просроченный API ключ. Проверьте переменную DEEPSEEK_API_KEY на сервере.",
+        });
+      }
+      if (response.status === 429) {
+        return NextResponse.json({
+          reply: "Превышен лимит запросов или закончились средства на аккаунте DeepSeek (429). Проверьте баланс на platform.deepseek.com.",
+        });
+      }
+      if (response.status === 402) {
+        return NextResponse.json({
+          reply: "Недостаточно средств на аккаунте DeepSeek (402). Пополните баланс на platform.deepseek.com.",
+        });
+      }
+
       return NextResponse.json({
-        reply:
-          "Не удалось получить ответ от ИИ. Попробуйте ещё раз или переформулируйте вопрос.",
+        reply: `Ошибка DeepSeek (${response.status}). Подробности в логах сервера.`,
       });
     }
 
