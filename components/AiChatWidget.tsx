@@ -61,6 +61,7 @@ export function AiChatWidget() {
   const messagesRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const historyLoadedRef = useRef(false);
 
   useEffect(() => {
     if (messagesRef.current) {
@@ -72,8 +73,41 @@ export function AiChatWidget() {
     if (isOpen) {
       setHasUnread(false);
       setTimeout(() => inputRef.current?.focus(), 150);
+
+      // Load history on first open
+      if (!historyLoadedRef.current && token) {
+        historyLoadedRef.current = true;
+        fetch('/api/ai-assistant', {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+          .then(r => (r.ok ? r.json() : null))
+          .then(data => {
+            if (data?.messages?.length > 0) {
+              setMessages(
+                data.messages.map((m: { id: string; text: string; role: string; fileName?: string }) => ({
+                  id: m.id,
+                  text: m.text,
+                  role: m.role === 'USER' ? 'user' : ('assistant' as 'user' | 'assistant'),
+                  fileName: m.fileName ?? undefined,
+                })),
+              );
+            }
+          })
+          .catch(console.error);
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, token]);
+
+  const handleClear = () => {
+    setMessages([]);
+    historyLoadedRef.current = true; // keep true so history isn't re-loaded after clearing
+    if (token) {
+      fetch('/api/ai-assistant', {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      }).catch(console.error);
+    }
+  };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -207,7 +241,7 @@ export function AiChatWidget() {
             <div className="flex items-center space-x-0.5">
               {messages.length > 0 && (
                 <button
-                  onClick={() => setMessages([])}
+                  onClick={handleClear}
                   className="w-7 h-7 rounded-lg flex items-center justify-center text-violet-200 hover:text-white hover:bg-violet-500 transition"
                   title="Очистить чат"
                 >

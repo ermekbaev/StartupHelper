@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 import { verifyToken } from "@/lib/auth";
 
 // Rate limiting per user per minute
@@ -47,6 +48,7 @@ const SYSTEM_PROMPT = `Вы — ИИ-помощник платформы Startup
 - Будьте дружелюбны и профессиональны`;
 
 const MAX_TEXT_LENGTH = 8000;
+const HISTORY_DAYS = 7;
 
 async function extractFileText(fileType: string, fileName: string, base64Data: string): Promise<string | null> {
   const buffer = Buffer.from(base64Data, "base64");
@@ -99,7 +101,50 @@ async function extractFileText(fileType: string, fileName: string, base64Data: s
   }
 }
 
-// POST - Send message to AI assistant (stateless, no DB storage)
+function getSevenDaysAgo(): Date {
+  const d = new Date();
+  d.setDate(d.getDate() - HISTORY_DAYS);
+  return d;
+}
+
+// GET - Fetch last 7 days of AI chat history
+export async function GET(request: NextRequest) {
+  try {
+    const authHeader = request.headers.get("authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const token = authHeader.split(" ")[1];
+    const payload = verifyToken(token);
+    if (!payload) {
+      return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+    }
+
+    const cutoff = getSevenDaysAgo();
+
+    // Cleanup old messages (older than 7 days)
+    await prisma.aiMessage.deleteMany({
+      where: {
+        userId: payload.userId,
+        createdAt: { lt: cutoff },
+      },
+    });
+
+    // Fetch remaining messages
+    const messages = await prisma.aiMessage.findMany({
+      where: { userId: payload.userId },
+      orderBy: { createdAt: "asc" },
+    });
+
+    return NextResponse.json({ messages });
+  } catch (error) {
+    console.error("AI history fetch error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
+// POST - Send message to AI assistant
 export async function POST(request: NextRequest) {
   try {
     const authHeader = request.headers.get("authorization");
@@ -175,6 +220,9 @@ export async function POST(request: NextRequest) {
       (file.type?.startsWith("image/") ||
         /\.(jpg|jpeg|png|gif|webp)$/i.test(file.name || ""));
 
+    let userMessageText = message.trim();
+    let userFileName: string | null = null;
+
     if (file && isImage) {
       // deepseek-chat is text-only — images not supported
       return NextResponse.json({
@@ -184,6 +232,7 @@ export async function POST(request: NextRequest) {
       // Document: extract text and prepend to message
       const extractedText = await extractFileText(file.type, file.name || "", file.data || "");
       if (extractedText) {
+        userFileName = file.name || null;
         const fullMessage = `[Содержимое файла "${file.name}":]
 ${extractedText}
 
@@ -195,7 +244,7 @@ ${extractedText}
         });
       }
     } else {
-      messages.push({ role: "user", content: message.trim() });
+      messages.push({ role: "user", content: userMessageText });
     }
 
     const response = await fetch("https://api.deepseek.com/v1/chat/completions", {
@@ -242,11 +291,53 @@ ${extractedText}
       data.choices?.[0]?.message?.content?.trim() ||
       "Не удалось обработать запрос. Попробуйте переформулировать вопрос.";
 
+    // Save both messages to DB
+    await prisma.aiMessage.createMany({
+      data: [
+        {
+          text: userMessageText,
+          role: "USER",
+          fileName: userFileName,
+          userId: payload.userId,
+        },
+        {
+          text: reply,
+          role: "ASSISTANT",
+          userId: payload.userId,
+        },
+      ],
+    });
+
     return NextResponse.json({ reply });
   } catch (error) {
     console.error("AI Assistant error:", error);
     return NextResponse.json({
       reply: "Произошла ошибка. Пожалуйста, попробуйте ещё раз.",
     });
+  }
+}
+
+// DELETE - Clear AI chat history for current user
+export async function DELETE(request: NextRequest) {
+  try {
+    const authHeader = request.headers.get("authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const token = authHeader.split(" ")[1];
+    const payload = verifyToken(token);
+    if (!payload) {
+      return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+    }
+
+    await prisma.aiMessage.deleteMany({
+      where: { userId: payload.userId },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("AI history clear error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

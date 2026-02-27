@@ -28,6 +28,7 @@ model User {
   transactions    Transaction[]
   documents       Document[]
   supportMessages SupportMessage[]
+  aiMessages      AiMessage[]
 }
 
 model Project {
@@ -241,4 +242,19 @@ model SupportMessage {
 enum MessageSender {
   USER
   SUPPORT
+}
+
+model AiMessage {
+  id        String   @id @default(cuid())
+  text      String   @db.Text
+  role      AiRole
+  fileName  String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+enum AiRole {
+  USER
+  ASSISTANT
 }
