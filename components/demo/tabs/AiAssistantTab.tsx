@@ -59,11 +59,43 @@ export function AiAssistantTab() {
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Load history from DB on mount
+  useEffect(() => {
+    if (!token) return;
+    fetch('/api/ai-assistant', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => (r.ok ? r.json() : null))
+      .then(data => {
+        if (data?.messages?.length > 0) {
+          setMessages(
+            data.messages.map((m: { id: string; text: string; role: string; fileName?: string }) => ({
+              id: m.id,
+              text: m.text,
+              role: m.role === 'USER' ? 'user' : ('assistant' as 'user' | 'assistant'),
+              fileName: m.fileName ?? undefined,
+            })),
+          );
+        }
+      })
+      .catch(console.error);
+  }, [token]);
+
   useEffect(() => {
     if (messagesRef.current) {
       messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
     }
   }, [messages, isSending]);
+
+  const handleClear = () => {
+    setMessages([]);
+    if (token) {
+      fetch('/api/ai-assistant', {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      }).catch(console.error);
+    }
+  };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -163,7 +195,7 @@ export function AiAssistantTab() {
         </div>
         {messages.length > 0 && (
           <button
-            onClick={() => setMessages([])}
+            onClick={handleClear}
             className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-red-500 transition px-3 py-1.5 rounded-lg hover:bg-red-50"
           >
             <i className="ri-delete-bin-line"></i>
